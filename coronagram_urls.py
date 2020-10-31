@@ -80,18 +80,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-'''
-  10871 yoav      20   0   12.0g   1.6g  69064 S   6.3   2.5  93:20.68 /opt/pycharm-2020.2.2/jbr/bin/java -classpath /opt/pycharm-2020.2.2/lib/bootstrap.jar:/opt/pych+ 
-
-
-'''
-
-
-
-"""
-        # This starts the scrolling by passing the driver and a timeout
-        # Once scroll returns bs4 parsers the page_source
-        i=0
-"""
