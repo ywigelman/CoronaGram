@@ -133,13 +133,33 @@ def get_data(proxy, url):   #  todo this function need refactoring - use seleniu
 def main():
     pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
     result = pd.DataFrame()
-    req_proxy = RequestProxy()  # you may get different number of proxy when  you run this at each time
-    proxies = req_proxy.get_proxy_list()  #  free proxy list
+    #req_proxy = RequestProxy()  # you may get different number of proxy when  you run this at each time
+    #proxies = req_proxy.get_proxy_list()  #  free proxy list
     scraper = HashTagPage(HASHTAG_CORONA_URL, scroll_pause_time_range=(3, 5))
     #pool_lst = []
+    chrome_options2 = Options()
+    chrome_options2.add_argument(CHROME_HEADLESS)
     for url in scraper.all_urls():
-        result.append(get_data(choice(proxies), url))
-        print(result)
+        try:
+            driver2 = Chrome(options=chrome_options2)
+            driver2.get(url)
+            data = bs(driver2.page_source, 'html.parser')
+            driver2.close()
+            body = data.find('body')
+            script = body.find('script', text=lambda t: t.startswith(URL_KEY_WORD))
+            page_json = script.string.split(URL_KEY_WORD, 1)[-1].rstrip(';')
+            json_data = json.loads(page_json)
+            posts = json_data['entry_data']['PostPage'][0]['graphql']
+            posts = json.dumps(posts)
+            posts = json.loads(posts)
+            x = pd.DataFrame.from_dict(json_normalize(posts), orient='columns')
+            x.columns = x.columns.str.replace('shortcode_media.', '')
+        except:
+            x = pd.DataFrame()
+        result = result.append(x)
+        if len(result) % 100 == 0:
+            print(len(result))
+            time.sleep(randint(3, 5))
     result.to_pickle(pickled_results)
 
 
