@@ -7,7 +7,7 @@ from selenium.webdriver import Chrome, DesiredCapabilities
 from random import randint, choice
 import pickle
 from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import pandas as pd
 from pandas.io.json import json_normalize
 import numpy as np
@@ -17,9 +17,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 #  todo consider putting the project inside a docker with a version of chrome or other browser and matching key
+# constants
 
 HASHTAG_CORONA_URL = 'https://www.instagram.com/explore/tags/corona/?h__a=1'  # hashtag corona page
 POST_URL_PREFIX = 'https://www.instagram.com/p'
+HEAD_LESS_MODE = True
+IMPLICIT_WAIT = 30
 
 
 class ChromeScraper(object):
@@ -31,8 +34,6 @@ class ChromeScraper(object):
         self._headless = headless_mode
         self._implicit_wait = implicit_wait
         self._limit = limit
-        self._scrap_lst = []
-        self._chrome_options = Options()
         self._max_load_time = max_load_time
 
     def __repr__(self):
@@ -52,19 +53,12 @@ class ChromeScraper(object):
         data = bs(source, 'html.parser')
         return data.find('body')
 
-    @property
-    def last_item(self):
-        return self._scrap_lst[-1]
-
-    @property
-    def items_scraped(self) -> int:
-        return len(self._scrap_lst)
-
     @cached_property
     def driver(self):
+        chrome_options = Options()
         if self._headless:
-            self._chrome_options.add_argument(ChromeScraper.CHROME_HEADLESS)
-        driver = Chrome(options=self._chrome_options)
+            chrome_options.add_argument(ChromeScraper.CHROME_HEADLESS)
+        driver = Chrome(options=chrome_options)
         driver.implicitly_wait(self._implicit_wait)
         return driver
 
@@ -79,7 +73,7 @@ class ChromeScraper(object):
 class HashTagPage(ChromeScraper):
     SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'  # java scrip command for scrolling to page bottom
 
-    def __init__(self, url: str, headless_mode: bool = True, implicit_wait: int = 30,
+    def __init__(self, url: str, headless_mode: bool = HEAD_LESS_MODE, implicit_wait: int = IMPLICIT_WAIT,
                  scroll_pause_time_range: tuple = (10, 30), previous_session_last_url_scraped: str = None,
                  limit: int = np.inf):
 
@@ -87,8 +81,8 @@ class HashTagPage(ChromeScraper):
         self._headless = headless_mode
         self._implicit_wait = implicit_wait
         self._last_url_scraped = previous_session_last_url_scraped
-        self.url_lst = []
-        self.scrolls = 0
+        self._url_batch = []
+        self._scraped_urls = 0
 
         super().__init__(url, headless_mode=self._headless, implicit_wait=self._implicit_wait, limit=limit)
 
@@ -101,19 +95,18 @@ class HashTagPage(ChromeScraper):
         else:
             return True
 
-    def all_urls(self):
+    def url_batch_gen(self):
         """
         generator method is used for scraping data from pages with infinite scrolling
         :return:
         """
         self.open()
-        last_item_ind = self.items_scraped
         while True:
             self.url_page_scrap()
-            yield self._scrap_lst[last_item_ind:]
+            yield self._url_batch
             if not self.scroll():
                 return
-            last_item_ind = deepcopy(self.items_scraped)
+            self._url_batch = []
 
     def url_page_scrap(self):
         """
@@ -123,23 +116,27 @@ class HashTagPage(ChromeScraper):
         for element in self.driver.find_elements_by_tag_name('a'):  # todo consider making this part more efficient
             link = element.get_attribute('href')
             if '/p/' in link:  # it seems that in hashtag pages that are posts that are reused
-                self._scrap_lst.append(link)
-            if self.items_scraped >= self._limit:
+                self._url_batch.append(link)
+                self._scraped_urls += 1
+            if self._scraped_urls >= self._limit:
                 break
+
+    def url_scraped(self) -> int:
+        return self._scraped_urls
 
 
 class Post(ChromeScraper):
     POST_KEY_WORD = 'window._sharedData = '
     READY_STATE = 'return document.readyState;'
 
-    def __init__(self, url: str, headless_mode, implicit_wait):
-        super().__init__(url, headless_mode, implicit_wait)
+    def __init__(self, url: str):
+        super().__init__(url, HEAD_LESS_MODE, IMPLICIT_WAIT)
 
     def scrap(self):
         self.open()
-        WebDriverWait(self.driver, 5).until(
-            lambda driver: driver.execute_script('return document.readyState') == 'complete')
         try:
+            WebDriverWait(self.driver, 5).until(
+                lambda driver: driver.execute_script('return document.readyState') == 'complete')
             script = self.body.find('script', text=lambda t: t.startswith(Post.POST_KEY_WORD))
             page_json, = filter(None, script.string.rstrip(';').split(Post.POST_KEY_WORD, 1))
             posts, = json.loads(page_json)['entry_data']['PostPage']
@@ -161,68 +158,26 @@ def launcher(*args):
 
 
 def main():
-    pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
-    # req_proxy = RequestProxy()  # you may get different number of proxy when  you run this at each time
-    # proxies = req_proxy.get_proxy_list()  #  free proxy list
-
-    headless = True
-    implicit_wait = 50
-    batch_wait_range = (3, 5)
     scroll_pause_time_range = (3, 5)
-    cpu = 4
-    item_limit = 2000
+    cpu = cpu_count()-1  # this will make all your processors work
+    print(cpu)
+    item_limit = 200
 
-    scraper = HashTagPage(HASHTAG_CORONA_URL, headless_mode=headless, scroll_pause_time_range=scroll_pause_time_range,
-                          limit=item_limit, implicit_wait=implicit_wait)
-    pool_lst = []
+    scraper = HashTagPage(HASHTAG_CORONA_URL, scroll_pause_time_range=scroll_pause_time_range, limit=item_limit)
     pd_record = []
-    counter = 0
-    for url_batch in scraper.all_urls():
-        for url in url_batch:
-            counter += 1
-            pool_lst.append((url, headless, implicit_wait))
-        with Pool(processes=cpu) as p:
-            pd_record.extend(p.starmap(launcher, pool_lst))
-        time.sleep(randint(*batch_wait_range))
-        print(scraper.items_scraped)
-
+    for url_batch in scraper.url_batch_gen():
+        with Pool(processes=cpu) as p: pd_record.extend(p.map(launcher, url_batch))
+        if scraper.url_scraped() == item_limit:
+            break
+        print('done scrapping a total of {} posts so far'.format(scraper.url_scraped()))
     concatenated = pd.concat(pd_record)
     print(concatenated)
-    concatenated.to_pickle(pickled_results)
 
-
-'''
-        try:
-            driver2 = Chrome(options=chrome_options2)
-            driver2.get(url)
-            data = bs(driver2.page_source, 'html.parser')
-            driver2.close()
-            body = data.find('body')
-            script = body.find('script', text=lambda t: t.startswith(URL_KEY_WORD))
-            page_json = script.string.split(URL_KEY_WORD, 1)[-1].rstrip(';')
-            json_data = json.loads(page_json)
-            posts = json_data['entry_data']['PostPage'][0]['graphql']
-            posts = json.dumps(posts)
-            posts = json.loads(posts)
-            x = pd.DataFrame.from_dict(json_normalize(posts), orient='columns')
-            x.columns = x.columns.str.replace('shortcode_media.', '')
-            result = result.append(x.copy())
-            if len(result) % 100 == 0:
-                print(len(result))
-                time.sleep(randint(3, 5))
-        except:
-           continue
-
-    result.to_pickle(pickled_results)
-'''
+    #pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
+    #concatenated.to_pickle(pickled_results)
 
 if __name__ == '__main__':
     main()
 
-"""
-        # This starts the scrolling by passing the driver and a timeout
-        # Once scroll returns bs4 parsers the page_source
-        i=0
-"""
-
-# <button class="sqdOP yWX7d     _8A5w5    " type="button"><span>120</span> likes</button>
+# req_proxy = RequestProxy()  # you may get different number of proxy when  you run this at each time
+# proxies = req_proxy.get_proxy_list()  #  free proxy list
