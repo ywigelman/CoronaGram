@@ -9,6 +9,7 @@ import mysql.connector
 SCROLL_PAUSE_TIME = 2
 URL = 'https://www.instagram.com/explore/tags/corona/'
 
+
 def login(driver, usermail, password):
     """
     This function log you in to instagram by using your facebook account, before starting to scrap
@@ -21,6 +22,7 @@ def login(driver, usermail, password):
     driver.find_element_by_xpath('//*[@id="pass"]').send_keys(password)
     driver.find_element_by_xpath('//*[@id="loginbutton"]').click()
     time.sleep(SCROLL_PAUSE_TIME)
+
 
 def html_line_of_posts(driver):
     """

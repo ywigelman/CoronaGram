@@ -1,72 +1,77 @@
 from bs4 import BeautifulSoup as bs
 import time
 import json
+import selenium.webdriver
 from selenium.webdriver.chrome.options import Options
+
 from selenium.common.exceptions import WebDriverException
-from selenium.webdriver import Chrome, DesiredCapabilities
+from selenium.webdriver import Chrome
 from random import randint, choice
 import pickle
 from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
 from multiprocessing import Pool, cpu_count
 import pandas as pd
-from pandas.io.json import json_normalize
 import numpy as np
 from copy import deepcopy
 from cached_property import cached_property
-from selenium.webdriver.support.ui import WebDriverWait
 import argparse
+from urllib.request import urlopen
 
 #  todo consider putting the project inside a docker with a version of chrome or other browser and matching key
 # constants
 
 POST_URL_PREFIX = 'https://www.instagram.com/p'
-HEAD_LESS_MODE = True
+HEAD_LESS_MODE = False
 IMPLICIT_WAIT = 30
-
+WAIT_COMPLETE = 5
 DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
-                  'like_count',
-                  'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
+                  'like_count', 'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
                   'owner_edge_followed_by_count', 'is_ad']
+COL_NAME_DICT = {'shortcode_media.__typename': 'type',
+                 'shortcode_media.id': 'id',
+                 'shortcode_media.shortcode': 'shortcode',
+                 'shortcode_media.dimensions.height': 'dim_height',
+                 'shortcode_media.dimensions.width': 'dim_width',
+                 'shortcode_media.display_url': 'photo_url',
+                 'shortcode_media.accessibility_caption': 'ai_comment',
+                 'shortcode_media.is_video': 'is_video',
+                 'shortcode_media.edge_media_to_tagged_user.edges': 'user_details',
+                 'shortcode_media.edge_media_to_caption.edges': 'post_text',
+                 'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
+                 'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
+                 'shortcode_media.edge_media_to_hoisted_comment.edges': 'edge_media_to_hoisted_comment.edges',
+                 'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
+                 'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
+                 'shortcode_media.comments_disabled': 'comments_disabled',
+                 'shortcode_media.taken_at_timestamp': 'timestamp',
+                 'shortcode_media.edge_media_preview_like.count': 'like_count',
+                 'shortcode_media.location.id': 'location_id',
+                 'shortcode_media.location.has_public_page': 'location_has_public_page',
+                 'shortcode_media.location.name': 'location_name',
+                 'shortcode_media.location.slug': 'location_slug',
+                 'shortcode_media.location.address_json': 'location_json',
+                 'shortcode_media.owner.id': 'owner_id',
+                 'shortcode_media.owner.is_verified': 'owner_is_verified',
+                 'shortcode_media.owner.profile_pic_url': 'owner_profile_pic_url',
+                 'shortcode_media.owner.username': 'owner_username',
+                 'shortcode_media.owner.full_name': 'owner_full_name',
+                 'shortcode_media.owner.is_private': 'owner_is_private',
+                 'shortcode_media.owner.is_unpublished': 'owner_is_unpublished',
+                 'shortcode_media.owner.pass_tiering_recommendation': 'owner_pass_tiering_recommendation',
+                 'shortcode_media.owner.edge_owner_to_timeline_media.count': 'owner_edge_owner_to_timeline_media_count',
+                 'shortcode_media.owner.edge_followed_by.count': 'owner_edge_followed_by_count',
+                 'shortcode_media.is_ad': 'is_ad'}
+WEBDRIVER_BROWSERS = {
+    'CHROME': {
+        'DRIVER': selenium.webdriver.Chrome,
+        'OPTIONS': selenium.webdriver.chrome.options.Options},
+    'FIREFOX': {
+        'DRIVER': selenium.webdriver.Firefox,
+        'OPTIONS': selenium.webdriver.FirefoxOptions}}
 
-dic_fields = {
-    'type': '__typename',
-    'id': 'id',
-    'shortcode': 'shortcode',
-    'dim_height': 'dimensions.height',
-    'dim_width': 'dimensions.width',
-    'photo_url': 'display_url',
-    'ai_comment': 'accessibility_caption',
-    'is_video': 'is_video',
-    'user_details': 'edge_media_to_tagged_user.edges',
-    'post_text': 'edge_media_to_caption.edges',
-    'comment_count': 'edge_media_to_parent_comment.count',
-    'comments': 'edge_media_to_parent_comment.edges',
-    'edge_media_to_hoisted_comment.edges': 'edge_media_to_hoisted_comment.edges',  ### ????
-    'preview_comment_count': 'edge_media_preview_comment.count',
-    'preview_comment': 'edge_media_preview_comment.edges',
-    'comments_disabled': 'comments_disabled',
-    'timestamp': 'taken_at_timestamp',
-    'like_count': 'edge_media_preview_like.count',
-    'location_id': 'location.id',
-    'location_has_public_page': 'location.has_public_page',
-    'location_name': 'location.name',
-    'location_slug': 'location.slug',
-    'location_json': 'location.address_json',
-    'owner_id': 'owner.id',
-    'owner_is_verified': 'owner.is_verified',
-    'owner_profile_pic_url': 'owner.profile_pic_url',
-    'owner_username': 'owner.username',
-    'owner_full_name': 'owner.full_name',
-    'owner_is_private': 'owner.is_private',
-    'owner_is_unpublished': 'owner.is_unpublished',
-    'owner_pass_tiering_recommendation': 'owner.pass_tiering_recommendation',
-    'owner_edge_owner_to_timeline_media_count': 'owner.edge_owner_to_timeline_media.count',
-    'owner_edge_followed_by_count': 'owner.edge_followed_by.count',
-    'is_ad': 'is_ad'
-}
 
-
-class ChromeScraper(object):
+class ChromeScraper(
+    object):  # todo remove this class - use driver class instead to initiate driver and other attibutes to HashTagPage class
     CHROME_HEADLESS = '--headless'  # java scrip command for making a headless browser (no gui)
     SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for getting scroll height
 
@@ -83,16 +88,6 @@ class ChromeScraper(object):
     @property
     def page_height(self):
         return self.driver.execute_script(ChromeScraper.SCROLL_HEIGHT)  # stores the height of the page
-
-    @property
-    def body(self):
-        """
-        a property method for getting the content (body) of an html page
-        :return:
-        """
-        source = self.driver.page_source
-        data = bs(source, 'html.parser')
-        return data.find('body')
 
     @cached_property
     def driver(self):
@@ -111,7 +106,7 @@ class ChromeScraper(object):
             return
 
 
-class HashTagPage(ChromeScraper):
+class HashTagPage(ChromeScraper):  # todo add driver class an attribute - composition
     SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'  # java scrip command for scrolling to page bottom
 
     def __init__(self, url: str, headless_mode: bool = HEAD_LESS_MODE, implicit_wait: int = IMPLICIT_WAIT,
@@ -166,27 +161,30 @@ class HashTagPage(ChromeScraper):
         return self._scraped_urls
 
 
-class Post(ChromeScraper):
+class Post(object):
     POST_KEY_WORD = 'window._sharedData = '
     READY_STATE = 'return document.readyState;'
 
     def __init__(self, url: str):
-        super().__init__(url, HEAD_LESS_MODE, IMPLICIT_WAIT)
+        self._url = url
 
     def scrap(self):
-        self.open()
         try:
-            WebDriverWait(self.driver, 5).until(
-                lambda driver: driver.execute_script('return document.readyState') == 'complete')
-            script = self.body.find('script', text=lambda t: t.startswith(Post.POST_KEY_WORD))
+            source = urlopen(self._url)
+            body = bs(source, 'html.parser').find('body')
+            script = body.find('script', text=lambda t: t.startswith(Post.POST_KEY_WORD))
             page_json, = filter(None, script.string.rstrip(';').split(Post.POST_KEY_WORD, 1))
             posts, = json.loads(page_json)['entry_data']['PostPage']
-            posts = posts['graphql']
-            return pd.json_normalize(posts)  # todo rename some of the elements
+            return posts['graphql']
         except Exception:  # todo think about possible exceptions
-            return pd.DataFrame()
-        finally:
-            self.driver.close()
+            return json.loads('{}')
+
+
+class Driver(object):  # todo finish driver class to unable setting of either chrom or firefox
+
+    def __init__(self, browser: str, driver: str, headless_mode: bool = HEAD_LESS_MODE,
+                 implicit_wait: int = IMPLICIT_WAIT):
+        pass
 
 
 def launcher(*args):
@@ -201,14 +199,27 @@ def launcher(*args):
 def main():
     parser = argparse.ArgumentParser(prog='coronagram_urls.py', description=f'#### Instagram Scrapping ####\n',
                                      epilog=f'List of possible fields to choose:\n'
-                                            f'{" ".join(list(dic_fields.keys()))}')
+                                            f'{" ".join(list(COL_NAME_DICT.values()))}',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('tag', type=str, help='Choose a #hashtag')
     parser.add_argument('-n', '--number', type=int, default=1, help='Choose number of posts to print')
     parser.add_argument('-f', '--fields', nargs='*', type=str, help='Choose fields to print. If no -f, default fields '
                                                                     'will be printed. If -f only without fields, all json fields will be'
                                                                     f' printed. Defaults fields are: {" ".join(DEFAULT_FIELDS)}')
+    parser.add_argument('-b', '--browser', type=str, default='chrome',
+                        help='browser choice to be used by selenium '
+                             'WebDriver. supported browsers:\t{}'.format('|'.join(WEBDRIVER_BROWSERS.keys())))
+    parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
+                        help='number of cpu available for multithreading')
+    parser.add_argument('-s', '--stop_code', type=str, help='url shortcode of most recent scraped item', default='')
 
     args = parser.parse_args()
+
+    cpu = args.cpu
+    browser = args.browser  # todo browser will be used to set a Driver class
+    stop_code = args.stop_code  # todo add a condition in HashTagPage class to stop once reaching this post
+    if cpu < 0: cpu = 1
+
     json_fields = []
     if args.fields is None:
         fields = DEFAULT_FIELDS
@@ -216,24 +227,23 @@ def main():
         fields = args.fields
 
     for field in fields:
-        json_fields.append(dic_fields[field])
+        json_fields.append(field)
 
     scroll_pause_time_range = (3, 5)
-    cpu = cpu_count() - 1  # this will make all your processors work
-    print(cpu)
     item_limit = args.number
 
     hashtag_url = f'https://www.instagram.com/explore/tags/{args.tag}/?h__a=1'
 
     scraper = HashTagPage(hashtag_url, scroll_pause_time_range=scroll_pause_time_range, limit=item_limit)
-    pd_record = []
+    json_records = []
     for url_batch in scraper.url_batch_gen():
         with Pool(processes=cpu) as p:
-            pd_record.extend(p.map(launcher, url_batch))
+            json_records.extend(p.map(launcher, url_batch))
         if scraper.url_scraped() == item_limit:
             break
         print('done scrapping a total of {} posts so far'.format(scraper.url_scraped()))
-    concatenated = pd.concat(pd_record)
+    pandas_records = [pd.json_normalize(json_record) for json_record in json_records]
+    concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT).loc[:, json_fields]
     print(concatenated)
 
     # pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
