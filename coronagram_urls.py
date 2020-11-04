@@ -14,15 +14,59 @@ import numpy as np
 from copy import deepcopy
 from cached_property import cached_property
 from selenium.webdriver.support.ui import WebDriverWait
+import argparse
 
 
 #  todo consider putting the project inside a docker with a version of chrome or other browser and matching key
 # constants
 
-HASHTAG_CORONA_URL = 'https://www.instagram.com/explore/tags/corona/?h__a=1'  # hashtag corona page
 POST_URL_PREFIX = 'https://www.instagram.com/p'
 HEAD_LESS_MODE = True
 IMPLICIT_WAIT = 30
+
+
+DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment', 'like_count',
+                  'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
+                  'owner_edge_followed_by_count', 'is_ad']
+
+
+dic_fields = {
+    'type' : '__typename',
+    'id' : 'id',
+    'shortcode' : 'shortcode',
+    'dim_height' : 'dimensions.height',
+    'dim_width' : 'dimensions.width',
+    'photo_url' : 'display_url',
+    'ai_comment' : 'accessibility_caption',
+    'is_video' : 'is_video',
+    'user_details' : 'edge_media_to_tagged_user.edges',
+    'post_text' : 'edge_media_to_caption.edges',
+    'comment_count' : 'edge_media_to_parent_comment.count',
+    'comments' : 'edge_media_to_parent_comment.edges',
+    'edge_media_to_hoisted_comment.edges' : 'edge_media_to_hoisted_comment.edges', ### ????
+    'preview_comment_count' : 'edge_media_preview_comment.count',
+    'preview_comment' : 'edge_media_preview_comment.edges',
+    'comments_disabled' : 'comments_disabled',
+    'timestamp' : 'taken_at_timestamp',
+    'like_count' : 'edge_media_preview_like.count',
+    'location_id' : 'location.id',
+    'location_has_public_page' : 'location.has_public_page',
+    'location_name' : 'location.name',
+    'location_slug' : 'location.slug',
+    'location_json' : 'location.address_json',
+    'owner_id' : 'owner.id',
+    'owner_is_verified' : 'owner.is_verified',
+    'owner_profile_pic_url' : 'owner.profile_pic_url',
+    'owner_username' : 'owner.username',
+    'owner_full_name' : 'owner.full_name',
+    'owner_is_private' : 'owner.is_private',
+    'owner_is_unpublished' : 'owner.is_unpublished',
+    'owner_pass_tiering_recommendation' : 'owner.pass_tiering_recommendation',
+    'owner_edge_owner_to_timeline_media_count' : 'owner.edge_owner_to_timeline_media.count',
+    'owner_edge_followed_by_count' : 'owner.edge_followed_by.count',
+    'is_ad' : 'is_ad'
+}
+
 
 
 class ChromeScraper(object):
@@ -158,12 +202,33 @@ def launcher(*args):
 
 
 def main():
-    scroll_pause_time_range = (3, 5)
-    cpu = cpu_count()-1  # this will make all your processors work
-    print(cpu)
-    item_limit = 200
+    parser = argparse.ArgumentParser(prog='coronagram_urls.py',description=f'#### Instagram Scrapping ####\n',
+                                     epilog=f'List of possible fields to choose:\n'
+                                            f'{" ".join(list(dic_fields.keys()))}')
+    parser.add_argument('tag', type=str, help='Choose a #hashtag')
+    parser.add_argument('-n', '--number', type=int, default=1, help='Choose number of posts to print')
+    parser.add_argument('-f', '--fields', nargs='*', type=str, help='Choose fields to print. If no -f, default fields '
+                                                                    'will be printed. If -f only without fields, all json fields will be'
+                                                                    f' printed. Defaults fields are: {" ".join(DEFAULT_FIELDS)}')
 
-    scraper = HashTagPage(HASHTAG_CORONA_URL, scroll_pause_time_range=scroll_pause_time_range, limit=item_limit)
+    args = parser.parse_args()
+    json_fields = []
+    if args.fields is None:
+        fields = DEFAULT_FIELDS
+    else:
+        fields = args.fields
+
+    for field in fields:
+        json_fields.append(dic_fields[field])
+
+    scroll_pause_time_range = (3, 5)
+    cpu = cpu_count() - 1  # this will make all your processors work
+    print(cpu)
+    item_limit = args.number
+
+    hashtag_url = f'https://www.instagram.com/explore/tags/{args.tag}/?h__a=1'
+
+    scraper = HashTagPage(hashtag_url, scroll_pause_time_range=scroll_pause_time_range, limit=item_limit)
     pd_record = []
     for url_batch in scraper.url_batch_gen():
         with Pool(processes=cpu) as p: pd_record.extend(p.map(launcher, url_batch))
