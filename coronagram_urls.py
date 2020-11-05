@@ -196,7 +196,7 @@ def launcher(*args):
     return record
 
 
-def main():
+def arg_parser():
     parser = argparse.ArgumentParser(prog='coronagram_urls.py', description=f'#### Instagram Scrapping ####\n',
                                      epilog=f'List of possible fields to choose:\n'
                                             f'{" ".join(list(COL_NAME_DICT.values()))}',
@@ -212,10 +212,18 @@ def main():
     parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
                         help='number of cpu available for multithreading')
     parser.add_argument('-s', '--stop_code', type=str, help='url shortcode of most recent scraped item', default='')
+    parser.add_argument('-o', '--output', type=str, default=['pkl','insta_output.pkl'], nargs=2, metavar=('method/format',
+                        'filename'), help='Choose output file/database. options: csv, pkl, sql')
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = arg_parser()
 
     cpu = args.cpu
+    output_method = args.output[0]
+    output_filename = args.output[1]
     browser = args.browser  # todo browser will be used to set a Driver class
     stop_code = args.stop_code  # todo add a condition in HashTagPage class to stop once reaching this post
     if cpu < 0: cpu = 1
@@ -246,8 +254,14 @@ def main():
     concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT).loc[:, json_fields]
     print(concatenated)
 
-    # pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
-    # concatenated.to_pickle(pickled_results)
+    if output_method == 'csv':
+        pass
+        compression_opts = dict(method='zip', archive_name='out.csv')
+        pandas_records.to_csv(output_filename, index=False, compression=compression_opts)
+    elif output_method == 'pkl':
+        concatenated.to_pickle(output_filename)
+    elif output_method == 'sql':
+        pass
 
 
 if __name__ == '__main__':
