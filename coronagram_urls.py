@@ -16,6 +16,7 @@ from copy import deepcopy
 from cached_property import cached_property
 import argparse
 from urllib.request import urlopen
+import regex as re
 
 #  todo consider putting the project inside a docker with a version of chrome or other browser and matching key
 # constants
@@ -194,6 +195,11 @@ def launcher(*args):
     except WebDriverException:
         return pd.DataFrame()
     return record
+
+
+def get_hashtags(text):
+    p = re.compile(r'#(\w*)')
+    return p.findall(text)
 
 
 def arg_parser():
