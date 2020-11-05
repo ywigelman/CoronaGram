@@ -40,6 +40,7 @@ COL_NAME_DICT = {'shortcode_media.__typename': 'type',
                  'shortcode_media.edge_media_to_caption.edges': 'post_text',
                  'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
                  'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
+                 'shortcode_media.edge_media_to_hoisted_comment.edges': 'edge_media_to_hoisted_comment.edges',
                  'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
                  'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
                  'shortcode_media.comments_disabled': 'comments_disabled',
@@ -205,6 +206,11 @@ def get_hashtags(text):
 
 
 def arg_parser():
+def normalize(json_record: json):
+    return pd.json_normalize(json_record)
+
+
+def main():
     parser = argparse.ArgumentParser(prog='coronagram_urls.py', description=f'#### Instagram Scrapping ####\n',
                                      epilog=f'List of possible fields to choose:\n'
                                             f'{" ".join(list(COL_NAME_DICT.values()))}',
@@ -219,7 +225,9 @@ def arg_parser():
                              'WebDriver. supported browsers:\t{}'.format('|'.join(WEBDRIVER_BROWSERS.keys())))
     parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
                         help='number of cpu available for multithreading')
-    parser.add_argument('-s', '--stop_code', type=str, help='url shortcode of most recent scraped item', default='')
+    parser.add_argument('-s', '--short_code', type=str, help='url shortcode of most recent scraped item', default='')
+    #parser.add_argument('-s', '--stop_code', type=str, help='url shortcode of most recent scraped item', default='')
+
     #  todo add verbosity level for screen prints during scape sessions
     parser.add_argument('-o', '--output', type=str, default=['pkl','insta_output.pkl'], nargs=2, metavar=('method/format',
                         'filename'), help='Choose output file/database. options: csv, pkl, sql')
@@ -234,7 +242,7 @@ def main():
     output_method = args.output[0]
     output_filename = args.output[1]
     browser = args.browser  # todo browser will be used to set a Driver class
-    stop_code = args.stop_code  # todo add a condition in HashTagPage class to stop once reaching this post
+    short_code = args.short_code  # todo add a condition in HashTagPage class to stop once reaching this post
     if cpu < 0: cpu = 1
 
     json_fields = []
@@ -259,14 +267,22 @@ def main():
                 json_records.extend(p.map(launcher, url_batch))
             if scraper.url_scraped() == item_limit:
                 break
-            print('done scrapping a total of {} posts so far'.format(scraper.url_scraped()))
-    except Exception as e:
-        print('an unexpected error occurred\n{}'.format(e))
+            print('done scrapping a total of {} posts. so far...'.format(scraper.url_scraped()))
+    except Exception as general_error:
+        print('an unexpected error has occurred\n{}'.format(general_error))
     finally:
-        pandas_records = [pd.json_normalize(json_record) for json_record in json_records]
-        concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT).loc[:, json_fields]
+        with Pool(processes=cpu) as normalization:
+            pandas_records = normalization.map(normalize, json_records)
+
+        #concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT).loc[:, json_fields]
+        concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT)
+
         print(concatenated)
 
+        #pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
+        csv_results = '/home/yoav/PycharmProjects/ITC/Project#1/all_fields_400_posts.csv'
+        concatenated.to_csv(csv_results)
+        #concatenated.to_pickle(pickled_results)
     if output_method == 'csv':
         pass
         compression_opts = dict(method='zip', archive_name='out.csv')
