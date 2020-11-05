@@ -21,7 +21,7 @@ from urllib.request import urlopen
 # constants
 
 POST_URL_PREFIX = 'https://www.instagram.com/p'
-HEAD_LESS_MODE = False
+HEAD_LESS_MODE = True
 IMPLICIT_WAIT = 30
 WAIT_COMPLETE = 5
 DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
@@ -212,7 +212,7 @@ def main():
     parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
                         help='number of cpu available for multithreading')
     parser.add_argument('-s', '--stop_code', type=str, help='url shortcode of most recent scraped item', default='')
-
+    #  todo add verbosity level for screen prints during scape sessions
     args = parser.parse_args()
 
     cpu = args.cpu
@@ -236,18 +236,22 @@ def main():
 
     scraper = HashTagPage(hashtag_url, scroll_pause_time_range=scroll_pause_time_range, limit=item_limit)
     json_records = []
-    for url_batch in scraper.url_batch_gen():
-        with Pool(processes=cpu) as p:
-            json_records.extend(p.map(launcher, url_batch))
-        if scraper.url_scraped() == item_limit:
-            break
-        print('done scrapping a total of {} posts so far'.format(scraper.url_scraped()))
-    pandas_records = [pd.json_normalize(json_record) for json_record in json_records]
-    concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT).loc[:, json_fields]
-    print(concatenated)
+    try:
+        for url_batch in scraper.url_batch_gen():
+            with Pool(processes=cpu) as p:
+                json_records.extend(p.map(launcher, url_batch))
+            if scraper.url_scraped() == item_limit:
+                break
+            print('done scrapping a total of {} posts so far'.format(scraper.url_scraped()))
+    except Exception as e:
+        print('an unexpected error occurred\n{}'.format(e))
+    finally:
+        pandas_records = [pd.json_normalize(json_record) for json_record in json_records]
+        concatenated = pd.concat(pandas_records).reset_index(drop=True).rename(columns=COL_NAME_DICT).loc[:, json_fields]
+        print(concatenated)
 
-    # pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
-    # concatenated.to_pickle(pickled_results)
+        pickled_results = '/home/yoav/PycharmProjects/ITC/Project#1/data.pkl'
+        concatenated.to_pickle(pickled_results)
 
 
 if __name__ == '__main__':
