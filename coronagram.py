@@ -139,6 +139,7 @@ class Driver(object):
                 proceed()
                 self._executable = input('Please enter a path of an executable driver:\t')
 
+        self._driver.set_page_load_timeout(5) # test
         self._driver.implicitly_wait(self._implicit_wait)  # setting browser
 
     @property
@@ -281,12 +282,12 @@ class HashTagPage(object):
         :return: bool expression that will indicate if the scroll was successful
         """
         self._driver_obj.driver.execute_script(HashTagPage.SCROLL_2_BOTTOM)  # Scroll to the bottom of the page
+        time.sleep(choice(self._scroll_pause_time_range))  # random wait between each scroll
         if self.page_height == self._previous_height:  # if previous height is equal to new height
             self._stop_scrapping = True
         else:
             self._previous_height = copy(
                 self.page_height)  # previous_height = copy(self.page_height)  ## test instead of deep copy
-            time.sleep(choice(self._scroll_pause_time_range))  # random wait between each scroll
 
     def url_batch_gen(self) -> list:
         """
@@ -386,8 +387,9 @@ class HashTagPage(object):
             try:
                 self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(self._hashtag))
                 break
-            except WebDriverException:
-                print('please note that a hashtag has to be of a string type. you have chosen '
+            except WebDriverException as wde:
+                print(wde)
+                print('please note that a hashtag has to be of a string type. you have chosen ' # not right message 
                       '"{}"'.format(self._hashtag))
                 proceed()
                 self._hashtag = input('please provide an hashtag of interest:\t')
@@ -413,12 +415,15 @@ POST_KEY_WORD = 'window._sharedData = '
 
 
 def post_scraping(url: str):  ## need to test and check if getting exeptions
-    source = urlopen(url)
-    body = bs(source, 'html.parser').find('body')
-    script = body.find('script', text=lambda t: t.startswith(POST_KEY_WORD))
-    page_json, = filter(None, script.string.rstrip(';').split(POST_KEY_WORD, 1))
-    posts, = json.loads(page_json)['entry_data']['PostPage']
-    return posts['graphql']
+    try:
+        source = urlopen(url)
+        body = bs(source, 'html.parser').find('body')
+        script = body.find('script', text=lambda t: t.startswith(POST_KEY_WORD))
+        page_json, = filter(None, script.string.rstrip(';').split(POST_KEY_WORD, 1))
+        posts, = json.loads(page_json)['entry_data']['PostPage']
+        return posts['graphql']
+    except:
+        return json.loads('{}')
 
 
 def normalize(json_record: json):
@@ -427,18 +432,18 @@ def normalize(json_record: json):
 
 def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
     json_records = []
-    try:
-        for url_batch in hashtag_page.url_batch_gen():
+    for url_batch in hashtag_page.url_batch_gen():
+        try:
             with Pool(processes=available_cpus) as p:
                 json_records.extend(p.map(post_scraping, url_batch))
-            #if hashtag_page.scraped_urls == item_limit:
-            #    break
-            print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_urls))
-    except Exception as general_error:
-        print('an unexpected error has occurred\n{}'.format(general_error))
-    finally:
-        with Pool(processes=available_cpus) as normalization:
-            pandas_records = normalization.map(normalize, json_records)
+                print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_urls))
+        except Exception as general_error:
+            print('an unexpected error has occurred\n{}'.format(general_error))
+        else:
+            if hashtag_page.scraped_urls >= hashtag_page._limit:
+                break
+    with Pool(processes=available_cpus) as normalization:
+        pandas_records = normalization.map(normalize, json_records)
         return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
 
 
