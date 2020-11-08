@@ -8,13 +8,14 @@ from random import choice
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
-from copy import copy  ## test (instead of copy)
+from copy import copy, deepcopy  ## test (instead of deep copy)
 import argparse
 from urllib.request import urlopen
 import regex as re
 import sys
 from pathlib import Path
 from typing import Union
+
 
 #  todo consider putting the project inside a docker with a version of chrome or other browser and matching key
 # constants
@@ -132,14 +133,15 @@ class Driver(object):
                 self._driver = browser_obj(options=options_instance)
                 break
             try:
-                self._driver = browser_obj(executable_path=Path(self._executable).resolve(), options=options_instance)
+                self._driver = browser_obj(executable_path=str(Path(self._executable).resolve()),
+                                           options=options_instance)
                 break
             except (WebDriverException, NotADirectoryError):
                 print('the value you enters as a web driver executable path is invalid')
                 proceed()
                 self._executable = input('Please enter a path of an executable driver:\t')
 
-        self._driver.set_page_load_timeout(5) # test
+        self._driver.set_page_load_timeout(50)  # test
         self._driver.implicitly_wait(self._implicit_wait)  # setting browser
 
     @property
@@ -155,7 +157,7 @@ class HashTagPage(object):
     SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'  # java scrip command for scrolling to page bottom
     SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for getting scroll height
     HASHTAG_URL_TEMPLATE = 'https://www.instagram.com/explore/tags/{}/?h__a=1'
-    STEP_SIZE = 0.01
+    STEP_SIZE = 0.1
     DEFAULT_MAX_WAIT_AFTER_SCROLL = 3
     DEFAULT_MIN_WAIT_AFTER_SCROLL = 1
     DEFAULT_LIMIT = np.nan
@@ -251,6 +253,8 @@ class HashTagPage(object):
             if pd.isna(self._limit):
                 self._limit = HashTagPage.DEFAULT_LIMIT
                 break
+            elif np.isinf(self._limit):
+                break
             try:
                 np.sqrt(int(self._limit))
             except ValueError:
@@ -286,7 +290,7 @@ class HashTagPage(object):
         if self.page_height == self._previous_height:  # if previous height is equal to new height
             self._stop_scrapping = True
         else:
-            self._previous_height = copy(
+            self._previous_height = deepcopy(
                 self.page_height)  # previous_height = copy(self.page_height)  ## test instead of deep copy
 
     def url_batch_gen(self) -> list:
@@ -313,6 +317,7 @@ class HashTagPage(object):
                     return
                 elif self._break:
                     break
+                self.keep_scrolling()
 
         while True:
             if self._stop_scrapping:
@@ -356,11 +361,12 @@ class HashTagPage(object):
         links = list(self.get_links())
         for link_ind, link in enumerate(links):
             if str(self._from_code) in link:
-                left_overs = link[link_ind + 1:]
+                left_overs = links[link_ind + 1:]
                 self._url_batch.extend(left_overs)
                 self._scraped_urls += len(left_overs)
                 self._break = True
                 return
+        self.scroll()
 
     @property
     def scraped_urls(self) -> int:
@@ -387,8 +393,7 @@ class HashTagPage(object):
             try:
                 self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(self._hashtag))
                 break
-            except WebDriverException as wde:
-                print(wde)
+            except WebDriverException:
                 print('please note that a hashtag has to be of a string type. you have chosen ' # not right message 
                       '"{}"'.format(self._hashtag))
                 proceed()
@@ -422,7 +427,8 @@ def post_scraping(url: str):  ## need to test and check if getting exeptions
         page_json, = filter(None, script.string.rstrip(';').split(POST_KEY_WORD, 1))
         posts, = json.loads(page_json)['entry_data']['PostPage']
         return posts['graphql']
-    except:
+    except Exception as e:
+        print(e)
         return json.loads('{}')
 
 
@@ -432,18 +438,20 @@ def normalize(json_record: json):
 
 def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
     json_records = []
-    for url_batch in hashtag_page.url_batch_gen():
-        try:
+    try:
+        for url_batch in hashtag_page.url_batch_gen():
             with Pool(processes=available_cpus) as p:
                 json_records.extend(p.map(post_scraping, url_batch))
                 print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_urls))
-        except Exception as general_error:
-            print('an unexpected error has occurred\n{}'.format(general_error))
-        else:
-            if hashtag_page.scraped_urls >= hashtag_page._limit:
+            if hashtag_page.scraped_urls == hashtag_page._limit:
                 break
-    with Pool(processes=available_cpus) as normalization:
-        pandas_records = normalization.map(normalize, json_records)
+    except Exception as general_error:
+        print('an unexpected error has occurred\n{}'.format(general_error))
+    finally:
+        hashtag_page._driver_obj.driver.quit()
+        with Pool(processes=available_cpus) as normalization:
+            pandas_records = normalization.map(normalize, json_records)
+            print(len(pandas_records))
         return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
 
 
@@ -573,10 +581,10 @@ def arg_parser():
 def main():
     tag, limit, fields, browser, executable, cpu, from_code, stop_code, output_method, output_filename, implicit_wait, \
     driver_options, headed, min_scroll_wait, max_scroll_wait = arg_parser()
-
     driver = Driver(browser, implicit_wait, executable, driver_options)
     hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, limit)
-    records = multi_scraper(hashtag_page, cpu).rename(columns=COL_NAME_DICT).loc[:, fields]
+    records = multi_scraper(hashtag_page, cpu)
+    records = records.rename(columns=COL_NAME_DICT).loc[:, fields]
     save_records(records, output_method=output_method, output_filename=output_filename)
     print(records)
 
