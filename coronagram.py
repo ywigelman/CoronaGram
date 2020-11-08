@@ -164,7 +164,7 @@ class HashTagPage(object):
 
     def __init__(self, hashtag: str, driver: Driver, max_scroll_wait: Union[float, None] = None,
                  min_scroll_wait: Union[float, None] = None, from_code: str = None, stop_code: str = None,
-                 limit=np.inf):
+                 limit=DEFAULT_LIMIT):
         """
         HashTagPage is an object that represents a dynamic instagram hashtag page with infinite scrolls with methods
         of scraping urls from
@@ -187,10 +187,9 @@ class HashTagPage(object):
         self._stop_code = stop_code
         self.attribute_validation()
 
-
         self._url_batch = []
         self._scraped_urls = 0
-        self._previous_height = None  ## test
+        self._previous_height = None
         self._stop_scrapping = False  # a flag that indicates if scrolling reached bottom of the web page
         self._break = False  # a flag that indicates stop automated scrolling and start collecting
         # (only relevant if from_code was provided)
@@ -346,7 +345,7 @@ class HashTagPage(object):
             if any([str(self._stop_code) in link, self.scraped_urls >= self._limit]):
                 # checks if reaching either stop code or limit
                 self._stop_scrapping = True
-                break
+                return
             self._url_batch.append(link)
             self._scraped_urls += 1
 
@@ -449,8 +448,8 @@ def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
         hashtag_page._driver_obj.driver.close()
         with Pool(processes=available_cpus) as normalization:
             pandas_records = normalization.map(normalize, json_records)
-            print(len(pandas_records))
         return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
+
 
 
 def get_hashtags(text):
@@ -509,7 +508,7 @@ def arg_parser():
     for field in fields:
         json_fields.append(field)
 
-    if args.cpu < 0:
+    if args.cpu <= 0:
         args.cpu = 1
 
     return args.tag, args.limit, json_fields, args.browser, args.executable, args.cpu, args.from_code, args.stop_code, \
@@ -523,6 +522,7 @@ def main():
     hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, limit)
     records = multi_scraper(hashtag_page, cpu)
     records = records.rename(columns=COL_NAME_DICT).loc[:, fields]
+    records['hashtag'] = records['post_text'].apply(get_hashtags)  # adding hashtag tags
     print(records)
 
 
