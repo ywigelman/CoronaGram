@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup as bs
 import time
 import json
 import selenium.webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 from random import choice
 from multiprocessing import Pool, cpu_count
