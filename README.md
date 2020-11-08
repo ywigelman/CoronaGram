@@ -15,6 +15,11 @@ is essential.
 It used selenium library for scrolling on page
 because instagram has dynamic pages. Selenium headless 
 option permits to limit usage of graphical resources.
+Selenium library permits to work with the browser installed on
+the computer (Chrome or Firefox). In case any browser is defined as default browser,
+you have to define a path to it. If it is set, the driver will use the one defined in
+OS environment variable
+
 
 Argument call permits the user to choose:
 1) hashtag to scrap (example: corona)
@@ -23,3 +28,4 @@ Argument call permits the user to choose:
 4) number of posts to scrap (default: 1)
 5) column to print (example: post_url, #like, location...)
 6) browser to use (default: chrome)
+
