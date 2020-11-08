@@ -4,8 +4,7 @@ Data Mining Project as part of an ITC Data Science course
 Our program scrap instagram page of a specific hashtag and
 take all post link related to this hashtag.
 After that it scraps each post page and print the result
-as a data table (possibility to choose output format: csv,
-sql, pkl).
+as a data table.
 
 The program is optimized to work with different CPUs in 
 parallel. Quantity of posts for Corona hashtag for example
