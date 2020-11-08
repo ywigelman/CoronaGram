@@ -3,12 +3,12 @@ import time
 import json
 import selenium.webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import WebDriverException, InvalidArgumentException
+from selenium.common.exceptions import WebDriverException
 from random import choice
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import numpy as np
-from copy import copy, deepcopy  ## test (instead of deep copy)
+from copy import deepcopy
 import argparse
 from urllib.request import urlopen
 import regex as re
@@ -16,8 +16,6 @@ import sys
 from pathlib import Path
 from typing import Union
 
-
-#  todo consider putting the project inside a docker with a version of chrome or other browser and matching key
 # constants
 
 READY_STATE = 'return document.readyState;'
@@ -166,7 +164,7 @@ class HashTagPage(object):
 
     def __init__(self, hashtag: str, driver: Driver, max_scroll_wait: Union[float, None] = None,
                  min_scroll_wait: Union[float, None] = None, from_code: str = None, stop_code: str = None,
-                 limit=np.inf):
+                 limit=DEFAULT_LIMIT):
         """
         HashTagPage is an object that represents a dynamic instagram hashtag page with infinite scrolls with methods
         of scraping urls from
@@ -189,10 +187,9 @@ class HashTagPage(object):
         self._stop_code = stop_code
         self.attribute_validation()
 
-
         self._url_batch = []
         self._scraped_urls = 0
-        self._previous_height = None  ## test
+        self._previous_height = None
         self._stop_scrapping = False  # a flag that indicates if scrolling reached bottom of the web page
         self._break = False  # a flag that indicates stop automated scrolling and start collecting
         # (only relevant if from_code was provided)
@@ -297,7 +294,7 @@ class HashTagPage(object):
         """
         generator method is used for scraping data from pages with infinite scrolling. this method works with
         the following steps:
-                                0) zero stage - will keep scrolling until reaching from_code
+                                0) zero stage - will keep scrolling until reaching from_code (if from code was provided)
                                 1) checks if done scraping by checking if bottom of page has been reached for the
                                 second time.
                                 2) collects all urls from current page scroll state using the url_page_scrap method
@@ -307,7 +304,7 @@ class HashTagPage(object):
         :return: list object in every round
         """
 
-        end_of_scrape_msg = 'You have reached the bottom of the page - either you scraped everything, ' \
+        end_of_scrape_msg = 'scraping is done - either you scraped everything, ' \
                             'reached your limit or something went wrong.\n(lets hope it\'s the first one)'
         self.open()
         if self._from_code:
@@ -348,7 +345,7 @@ class HashTagPage(object):
             if any([str(self._stop_code) in link, self.scraped_urls >= self._limit]):
                 # checks if reaching either stop code or limit
                 self._stop_scrapping = True
-                break
+                return
             self._url_batch.append(link)
             self._scraped_urls += 1
 
@@ -445,68 +442,14 @@ def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
                 print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_urls))
             if hashtag_page.scraped_urls == hashtag_page._limit:
                 break
-    except Exception as general_error:
+    except AssertionError as general_error:    # change later to Exception or something else
         print('an unexpected error has occurred\n{}'.format(general_error))
     finally:
-        hashtag_page._driver_obj.driver.quit()
+        hashtag_page._driver_obj.driver.close()
         with Pool(processes=available_cpus) as normalization:
             pandas_records = normalization.map(normalize, json_records)
-            print(len(pandas_records))
         return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
 
-
-def output_mode(file_path: Union[str, Path], objective: str) -> str:
-    """
-    a function that receives a path for a textual output file and return the mode by which this file will be opened.
-    if file exists will ask user if he prefer to append instead of replace
-    :param file_path: str of Path object the represents the path for the output file
-    :param objective: str object that represents the objective of the output file (pandas DataFrame, csv file, etc.)
-    :return:
-    """
-    while True:
-        try:
-            full_path = Path(file_path).resolve()
-        except TypeError as te:
-            print('just note that an output file request is not a philosophical question - we can not write '
-                  'to the void')
-            print(te)
-            proceed()
-            file_path = input('please enter a output file path for {}:\t'.format(objective))
-            continue
-        if Path(full_path).exists():
-            print('Please note that the "{}" path you entered ({}) already exists'.format(objective, file_path))
-            if not Path(full_path).is_file():
-                print('However it is not a file')
-                proceed()
-                file_path = input('please enter a output file path for {}:\t'.format(objective))
-            else:
-                while True:
-                    response = input('would you like to append to the existing file Y/n:\t').lower()
-                    if response == 'y':
-                        print('okydoky')
-                        return 'a+'
-                    elif response == 'n':
-                        print('aye aye')
-                        return 'w'
-                    else:
-                        print('your input is invalid')
-        else:
-            full_path.parent.mkdir(parents=True, exist_ok=True)  # making sure all parent directories exists otherwise
-            # creates them
-            return 'w'
-
-
-def save_records(df: pd.DataFrame, output_method: str, output_filename: str):   # todo doc string
-    if output_method == 'csv':
-        pass        #### to sure why pass ###
-        mode = output_mode(output_filename, output_method)
-        compression_opts = dict(method='zip', archive_name='out.csv')   #### not sure what this like is doing but seems cool ###
-        df.to_csv(output_filename, index=False, compression=compression_opts, mode=mode)
-    elif output_method == 'pkl':
-        df.to_pickle(output_filename)
-    elif output_method == 'sql':   ### in progress ###
-        pass
-    pass   #### to sure why pass ###
 
 
 def get_hashtags(text):
@@ -537,9 +480,6 @@ def arg_parser():
                         help='number of cpu available for multiprocessing')
     parser.add_argument('-fc', '--from_code', type=str, help='url shortcode to start scraping from')
     parser.add_argument('-sc', '--stop_code', type=str, help='url shortcode that when reach will stop scrapping')
-    parser.add_argument('-o', '--output', type=str, default=['pkl', 'insta_output.pkl'], nargs=2,
-                        metavar=('method/format',
-                                 'filename'), help='Choose output file/database. options: csv, pkl, sql')  #  todo please make to make sure input is valid
     parser.add_argument('-i', '--implicit_wait', type=int, default=IMPLICIT_WAIT, help='implicit wait time for '
                                                                                        'webdriver')
     # test that validate that this value is a non negative int
@@ -559,8 +499,6 @@ def arg_parser():
     if not args.headed:
         args.driver_options.append(HEADLESS_MODE)
 
-    output_method, output_filename = args.output
-
     json_fields = []
     if args.fields is None:
         fields = DEFAULT_FIELDS
@@ -570,28 +508,23 @@ def arg_parser():
     for field in fields:
         json_fields.append(field)
 
-    if args.cpu < 0:
+    if args.cpu <= 0:
         args.cpu = 1
 
     return args.tag, args.limit, json_fields, args.browser, args.executable, args.cpu, args.from_code, args.stop_code, \
-           output_method, output_filename, args.implicit_wait, args.driver_options, args.headed, args.min_scroll_wait, \
-           args.max_scroll_wait
+           args.implicit_wait, args.driver_options, args.headed, args.min_scroll_wait, args.max_scroll_wait
 
 
 def main():
-    tag, limit, fields, browser, executable, cpu, from_code, stop_code, output_method, output_filename, implicit_wait, \
-    driver_options, headed, min_scroll_wait, max_scroll_wait = arg_parser()
+    tag, limit, fields, browser, executable, cpu, from_code, stop_code, implicit_wait, driver_options, headed, \
+    min_scroll_wait, max_scroll_wait = arg_parser()
     driver = Driver(browser, implicit_wait, executable, driver_options)
     hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, limit)
     records = multi_scraper(hashtag_page, cpu)
     records = records.rename(columns=COL_NAME_DICT).loc[:, fields]
-    save_records(records, output_method=output_method, output_filename=output_filename)
+    records['hashtag'] = records['post_text'].apply(get_hashtags)  # adding hashtag tags
     print(records)
 
 
 if __name__ == '__main__':
     main()
-
-# from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
-# req_proxy = RequestProxy()  # you may get different number of proxy when  you run this at each time
-# proxies = req_proxy.get_proxy_list()  #  free proxy list
