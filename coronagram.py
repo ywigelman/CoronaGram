@@ -16,64 +16,17 @@ import sys
 from pathlib import Path
 from typing import Union
 
-# constants
-
-READY_STATE = 'return document.readyState;'
-POST_URL_PREFIX = 'https://www.instagram.com/p'
-HEADLESS_MODE = '--headless'
-IMPLICIT_WAIT = 30
-DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
-                  'like_count', 'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
-                  'owner_edge_followed_by_count', 'is_ad']
-COL_NAME_DICT = {'shortcode_media.__typename': 'type',
-                 'shortcode_media.id': 'id',
-                 'shortcode_media.shortcode': 'shortcode',
-                 'shortcode_media.dimensions.height': 'dim_height',
-                 'shortcode_media.dimensions.width': 'dim_width',
-                 'shortcode_media.display_url': 'photo_url',
-                 'shortcode_media.accessibility_caption': 'ai_comment',
-                 'shortcode_media.is_video': 'is_video',
-                 'shortcode_media.edge_media_to_tagged_user.edges': 'user_details',
-                 'shortcode_media.edge_media_to_caption.edges': 'post_text',
-                 'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
-                 'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
-                 'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
-                 'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
-                 'shortcode_media.comments_disabled': 'comments_disabled',
-                 'shortcode_media.taken_at_timestamp': 'timestamp',
-                 'shortcode_media.edge_media_preview_like.count': 'like_count',
-                 'shortcode_media.location.id': 'location_id',
-                 'shortcode_media.location.has_public_page': 'location_has_public_page',
-                 'shortcode_media.location.name': 'location_name',
-                 'shortcode_media.location.slug': 'location_slug',
-                 'shortcode_media.location.address_json': 'location_json',
-                 'shortcode_media.owner.id': 'owner_id',
-                 'shortcode_media.owner.is_verified': 'owner_is_verified',
-                 'shortcode_media.owner.profile_pic_url': 'owner_profile_pic_url',
-                 'shortcode_media.owner.username': 'owner_username',
-                 'shortcode_media.owner.full_name': 'owner_full_name',
-                 'shortcode_media.owner.is_private': 'owner_is_private',
-                 'shortcode_media.owner.is_unpublished': 'owner_is_unpublished',
-                 'shortcode_media.owner.pass_tiering_recommendation': 'tiering_recommendation',
-                 'shortcode_media.owner.edge_owner_to_timeline_media.count': 'owner_media_count',
-                 'shortcode_media.owner.edge_followed_by.count': 'owner_edge_followed_by_count',
-                 'shortcode_media.is_ad': 'is_ad',
-                 'shortcode_media.edge_sidecar_to_children.edges': 'multiple_photos',
-                 'shortcode_media.video_duration': 'video_duration',
-                 'shortcode_media.product_type': 'product_type'}
-DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
-WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: selenium.webdriver.Chrome,
-                                 OPTIONS_KEY: selenium.webdriver.chrome.options.Options},
-                      'FIREFOX': {DRIVER_KEY: selenium.webdriver.Firefox,
-                                  OPTIONS_KEY: selenium.webdriver.FirefoxOptions}}
-SYS_EXIT_MSG = 'would you like to continue Y/n'
-MAX_WAIT_AFTER_SCROLL = 3
-MIN_WAIT_AFTER_SCROLL = 1
-
 
 class Driver(object):
+    DEFAULT_IMPLICIT_WAIT = 50
+    DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
+    WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: selenium.webdriver.Chrome,
+                                     OPTIONS_KEY: selenium.webdriver.chrome.options.Options},
+                          'FIREFOX': {DRIVER_KEY: selenium.webdriver.Firefox,
+                                      OPTIONS_KEY: selenium.webdriver.FirefoxOptions}}
 
-    def __init__(self, browser: str, implicit_wait: int, executable: Union[str, Path, None] = None, *options):
+    def __init__(self, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
+                 executable: Union[str, Path, None] = None, *options):
         """
         Driver is an object for generating and setting selenium webdriver object with more friendly API and some
         limited options that are suitable for the task of url scrapping from instagram hashtag web pages
@@ -97,16 +50,16 @@ class Driver(object):
         :return: None
         """
         while True:  # checking that the selected browser is supported
-            browser_dict = WEBDRIVER_BROWSERS.get(self._browser.upper(), None)
+            browser_dict = Driver.WEBDRIVER_BROWSERS.get(self._browser.upper(), None)
             if browser_dict:
                 break
             print('You choose {} as your web browser. Unfortunately your choice of browser is '
                   'unsupported'.format(self._browser))
             proceed()
             self._browser = input('Please choose one of the following '
-                                  'browsers :\t{}'.format('|'.join(WEBDRIVER_BROWSERS.keys())))
+                                  'browsers :\t{}'.format('|'.join(Driver.WEBDRIVER_BROWSERS.keys())))
 
-        browser_obj, options_obj = browser_dict[DRIVER_KEY], browser_dict[OPTIONS_KEY]
+        browser_obj, options_obj = browser_dict[Driver.DRIVER_KEY], browser_dict[Driver.OPTIONS_KEY]
 
         while True:  # validate implicit wait attribute
             try:
@@ -138,8 +91,6 @@ class Driver(object):
                 print('the value you enters as a web driver executable path is invalid')
                 proceed()
                 self._executable = input('Please enter a path of an executable driver:\t')
-
-        self._driver.set_page_load_timeout(50)  # test
         self._driver.implicitly_wait(self._implicit_wait)  # setting browser
 
     @property
@@ -287,8 +238,7 @@ class HashTagPage(object):
         if self.page_height == self._previous_height:  # if previous height is equal to new height
             self._stop_scrapping = True
         else:
-            self._previous_height = deepcopy(
-                self.page_height)  # previous_height = copy(self.page_height)  ## test instead of deep copy
+            self._previous_height = deepcopy(self.page_height)
 
     def url_batch_gen(self) -> list:
         """
@@ -311,6 +261,7 @@ class HashTagPage(object):
             while True:
                 if self._stop_scrapping:
                     print(end_of_scrape_msg)
+                    self.close()
                     return
                 elif self._break:
                     break
@@ -319,6 +270,7 @@ class HashTagPage(object):
         while True:
             if self._stop_scrapping:
                 print(end_of_scrape_msg)
+                self.close()
                 return
             self.url_page_scrap()
             yield self._url_batch
@@ -383,18 +335,21 @@ class HashTagPage(object):
 
     def open(self) -> None:
         """
-        a method for opening an validating the integrity of an hashtag webpage
+        a method for opening an hashtag webpage
         :return: None
         """
-        while True:
-            try:
-                self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(self._hashtag))
-                break
-            except WebDriverException:
-                print('please note that a hashtag has to be of a string type. you have chosen ' # not right message 
-                      '"{}"'.format(self._hashtag))
-                proceed()
-                self._hashtag = input('please provide an hashtag of interest:\t')
+        self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
+
+    def close(self):
+        """
+        method for closing a driver at the end of the scrapping session
+        :return:
+        """
+        self._driver_obj.driver.close()
+
+
+# constant for proceed function:
+SYS_EXIT_MSG = 'would you like to continue Y/n'
 
 
 def proceed() -> None:
@@ -416,7 +371,7 @@ def proceed() -> None:
 POST_KEY_WORD = 'window._sharedData = '
 
 
-def post_scraping(url: str):  ## need to test and check if getting exeptions
+def post_scraping(url: str):
     try:
         source = urlopen(url)
         body = bs(source, 'html.parser').find('body')
@@ -440,22 +395,61 @@ def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
             with Pool(processes=available_cpus) as p:
                 json_records.extend(p.map(post_scraping, url_batch))
                 print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_urls))
-            if hashtag_page.scraped_urls == hashtag_page._limit:
-                break
-    except AssertionError as general_error:    # change later to Exception or something else
+    except Exception as general_error:    # several web related exception
         print('an unexpected error has occurred\n{}'.format(general_error))
     finally:
-        hashtag_page._driver_obj.driver.close()
         with Pool(processes=available_cpus) as normalization:
             pandas_records = normalization.map(normalize, json_records)
         return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
-
 
 
 def get_hashtags(text):
     p = re.compile(r'#(\w*)')
     return p.findall(text)
 
+
+# constants for argparse
+
+HEADLESS_MODE = '--headless'
+DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
+                  'like_count', 'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
+                  'owner_edge_followed_by_count', 'is_ad']
+COL_NAME_DICT = {'shortcode_media.__typename': 'type',
+                 'shortcode_media.id': 'id',
+                 'shortcode_media.shortcode': 'shortcode',
+                 'shortcode_media.dimensions.height': 'dim_height',
+                 'shortcode_media.dimensions.width': 'dim_width',
+                 'shortcode_media.display_url': 'photo_url',
+                 'shortcode_media.accessibility_caption': 'ai_comment',
+                 'shortcode_media.is_video': 'is_video',
+                 'shortcode_media.edge_media_to_tagged_user.edges': 'user_details',
+                 'shortcode_media.edge_media_to_caption.edges': 'post_text',
+                 'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
+                 'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
+                 'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
+                 'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
+                 'shortcode_media.comments_disabled': 'comments_disabled',
+                 'shortcode_media.taken_at_timestamp': 'timestamp',
+                 'shortcode_media.edge_media_preview_like.count': 'like_count',
+                 'shortcode_media.location.id': 'location_id',
+                 'shortcode_media.location.has_public_page': 'location_has_public_page',
+                 'shortcode_media.location.name': 'location_name',
+                 'shortcode_media.location.slug': 'location_slug',
+                 'shortcode_media.location.address_json': 'location_json',
+                 'shortcode_media.owner.id': 'owner_id',
+                 'shortcode_media.owner.is_verified': 'owner_is_verified',
+                 'shortcode_media.owner.profile_pic_url': 'owner_profile_pic_url',
+                 'shortcode_media.owner.username': 'owner_username',
+                 'shortcode_media.owner.full_name': 'owner_full_name',
+                 'shortcode_media.owner.is_private': 'owner_is_private',
+                 'shortcode_media.owner.is_unpublished': 'owner_is_unpublished',
+                 'shortcode_media.owner.pass_tiering_recommendation': 'tiering_recommendation',
+                 'shortcode_media.owner.edge_owner_to_timeline_media.count': 'owner_media_count',
+                 'shortcode_media.owner.edge_followed_by.count': 'owner_edge_followed_by_count',
+                 'shortcode_media.is_ad': 'is_ad',
+                 'shortcode_media.edge_sidecar_to_children.edges': 'multiple_photos',
+                 'shortcode_media.video_duration': 'video_duration',
+                 'shortcode_media.product_type': 'product_type'}
 
 def arg_parser():
     parser = argparse.ArgumentParser(prog='coronagram.py', description=f'#### Instagram Scrapping ####\n',
@@ -471,16 +465,16 @@ def arg_parser():
                                                                     f' {" ".join(DEFAULT_FIELDS)}')
     parser.add_argument('-b', '--browser', type=str, default='CHROME', help='browser choice to be used by selenium. '
                                                                             'supported browsers:\t{}'
-                        .format('|'.join(WEBDRIVER_BROWSERS.keys())))
+                        .format('|'.join(Driver.WEBDRIVER_BROWSERS.keys())))
     parser.add_argument('-e', '--executable', type=str, default=None, help='a path to the driver executable file. '
                                                                            'If none is given it will be assumed that '
                                                                            'the driver was added and available as an '
                                                                            'OS environment variable')
-    parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,  # todo please test input is valid
+    parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
                         help='number of cpu available for multiprocessing')
     parser.add_argument('-fc', '--from_code', type=str, help='url shortcode to start scraping from')
     parser.add_argument('-sc', '--stop_code', type=str, help='url shortcode that when reach will stop scrapping')
-    parser.add_argument('-i', '--implicit_wait', type=int, default=IMPLICIT_WAIT, help='implicit wait time for '
+    parser.add_argument('-i', '--implicit_wait', type=int, default=50, help='implicit wait time for '
                                                                                        'webdriver')
     # test that validate that this value is a non negative int
     parser.add_argument('-do', '--driver_options', type=str, default=[], help='ava script optional arguments that will '
@@ -489,9 +483,9 @@ def arg_parser():
                         action='append')
     parser.add_argument('-hd', '--headed', default=False, action='store_true',
                         help='run with added mode (with browser gui')
-    parser.add_argument('-mn', '--min_scroll_wait', type=int, default=MIN_WAIT_AFTER_SCROLL,
+    parser.add_argument('-mn', '--min_scroll_wait', type=int, default=3,
                         help='minimum number of seconds to wait after each scroll')
-    parser.add_argument('-mx', '--max_scroll_wait', type=int, default=MAX_WAIT_AFTER_SCROLL,
+    parser.add_argument('-mx', '--max_scroll_wait', type=int, default=5,
                         help='maximum number of seconds to wait after each scroll')
 
     args = parser.parse_args()
