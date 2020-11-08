@@ -18,8 +18,6 @@ from typing import Union
 
 # constants
 
-READY_STATE = 'return document.readyState;'
-POST_URL_PREFIX = 'https://www.instagram.com/p'
 HEADLESS_MODE = '--headless'
 IMPLICIT_WAIT = 30
 DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
@@ -66,14 +64,13 @@ WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: selenium.webdriver.Chrome,
                                  OPTIONS_KEY: selenium.webdriver.chrome.options.Options},
                       'FIREFOX': {DRIVER_KEY: selenium.webdriver.Firefox,
                                   OPTIONS_KEY: selenium.webdriver.FirefoxOptions}}
-SYS_EXIT_MSG = 'would you like to continue Y/n'
-MAX_WAIT_AFTER_SCROLL = 3
-MIN_WAIT_AFTER_SCROLL = 1
 
 
 class Driver(object):
+    DEFAULT_IMPLICIT_WAIT = 50
 
-    def __init__(self, browser: str, implicit_wait: int, executable: Union[str, Path, None] = None, *options):
+    def __init__(self, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT, executable: Union[str, Path, None] = None,
+                 *options):
         """
         Driver is an object for generating and setting selenium webdriver object with more friendly API and some
         limited options that are suitable for the task of url scrapping from instagram hashtag web pages
@@ -138,8 +135,6 @@ class Driver(object):
                 print('the value you enters as a web driver executable path is invalid')
                 proceed()
                 self._executable = input('Please enter a path of an executable driver:\t')
-
-        self._driver.set_page_load_timeout(50)  # test
         self._driver.implicitly_wait(self._implicit_wait)  # setting browser
 
     @property
@@ -287,8 +282,7 @@ class HashTagPage(object):
         if self.page_height == self._previous_height:  # if previous height is equal to new height
             self._stop_scrapping = True
         else:
-            self._previous_height = deepcopy(
-                self.page_height)  # previous_height = copy(self.page_height)  ## test instead of deep copy
+            self._previous_height = deepcopy(self.page_height)
 
     def url_batch_gen(self) -> list:
         """
@@ -311,6 +305,7 @@ class HashTagPage(object):
             while True:
                 if self._stop_scrapping:
                     print(end_of_scrape_msg)
+                    self.close()
                     return
                 elif self._break:
                     break
@@ -319,6 +314,7 @@ class HashTagPage(object):
         while True:
             if self._stop_scrapping:
                 print(end_of_scrape_msg)
+                self.close()
                 return
             self.url_page_scrap()
             yield self._url_batch
@@ -383,18 +379,21 @@ class HashTagPage(object):
 
     def open(self) -> None:
         """
-        a method for opening an validating the integrity of an hashtag webpage
+        a method for opening an hashtag webpage
         :return: None
         """
-        while True:
-            try:
-                self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(self._hashtag))
-                break
-            except WebDriverException:
-                print('please note that a hashtag has to be of a string type. you have chosen ' # not right message 
-                      '"{}"'.format(self._hashtag))
-                proceed()
-                self._hashtag = input('please provide an hashtag of interest:\t')
+        self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
+
+    def close(self):
+        """
+        method for closing a driver at the end of the scrapping session
+        :return:
+        """
+        self._driver_obj.driver.close()
+
+
+# constant for proceed function:
+SYS_EXIT_MSG = 'would you like to continue Y/n'
 
 
 def proceed() -> None:
@@ -416,7 +415,7 @@ def proceed() -> None:
 POST_KEY_WORD = 'window._sharedData = '
 
 
-def post_scraping(url: str):  ## need to test and check if getting exeptions
+def post_scraping(url: str):
     try:
         source = urlopen(url)
         body = bs(source, 'html.parser').find('body')
@@ -440,16 +439,12 @@ def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
             with Pool(processes=available_cpus) as p:
                 json_records.extend(p.map(post_scraping, url_batch))
                 print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_urls))
-            if hashtag_page.scraped_urls == hashtag_page._limit:
-                break
-    except AssertionError as general_error:    # change later to Exception or something else
+    except Exception as general_error:    # several web related exception
         print('an unexpected error has occurred\n{}'.format(general_error))
     finally:
-        hashtag_page._driver_obj.driver.close()
         with Pool(processes=available_cpus) as normalization:
             pandas_records = normalization.map(normalize, json_records)
         return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
-
 
 
 def get_hashtags(text):
@@ -476,11 +471,11 @@ def arg_parser():
                                                                            'If none is given it will be assumed that '
                                                                            'the driver was added and available as an '
                                                                            'OS environment variable')
-    parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,  # todo please test input is valid
+    parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
                         help='number of cpu available for multiprocessing')
     parser.add_argument('-fc', '--from_code', type=str, help='url shortcode to start scraping from')
     parser.add_argument('-sc', '--stop_code', type=str, help='url shortcode that when reach will stop scrapping')
-    parser.add_argument('-i', '--implicit_wait', type=int, default=IMPLICIT_WAIT, help='implicit wait time for '
+    parser.add_argument('-i', '--implicit_wait', type=int, default=50, help='implicit wait time for '
                                                                                        'webdriver')
     # test that validate that this value is a non negative int
     parser.add_argument('-do', '--driver_options', type=str, default=[], help='ava script optional arguments that will '
@@ -489,9 +484,9 @@ def arg_parser():
                         action='append')
     parser.add_argument('-hd', '--headed', default=False, action='store_true',
                         help='run with added mode (with browser gui')
-    parser.add_argument('-mn', '--min_scroll_wait', type=int, default=MIN_WAIT_AFTER_SCROLL,
+    parser.add_argument('-mn', '--min_scroll_wait', type=int, default=3,
                         help='minimum number of seconds to wait after each scroll')
-    parser.add_argument('-mx', '--max_scroll_wait', type=int, default=MAX_WAIT_AFTER_SCROLL,
+    parser.add_argument('-mx', '--max_scroll_wait', type=int, default=5,
                         help='maximum number of seconds to wait after each scroll')
 
     args = parser.parse_args()
