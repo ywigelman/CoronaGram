@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup as bs
 import time
 import json
 import selenium.webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 from random import choice
 from multiprocessing import Pool, cpu_count
@@ -15,61 +16,17 @@ import sys
 from pathlib import Path
 from typing import Union
 
-# constants
-
-HEADLESS_MODE = '--headless'
-IMPLICIT_WAIT = 30
-DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
-                  'like_count', 'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
-                  'owner_edge_followed_by_count', 'is_ad']
-COL_NAME_DICT = {'shortcode_media.__typename': 'type',
-                 'shortcode_media.id': 'id',
-                 'shortcode_media.shortcode': 'shortcode',
-                 'shortcode_media.dimensions.height': 'dim_height',
-                 'shortcode_media.dimensions.width': 'dim_width',
-                 'shortcode_media.display_url': 'photo_url',
-                 'shortcode_media.accessibility_caption': 'ai_comment',
-                 'shortcode_media.is_video': 'is_video',
-                 'shortcode_media.edge_media_to_tagged_user.edges': 'user_details',
-                 'shortcode_media.edge_media_to_caption.edges': 'post_text',
-                 'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
-                 'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
-                 'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
-                 'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
-                 'shortcode_media.comments_disabled': 'comments_disabled',
-                 'shortcode_media.taken_at_timestamp': 'timestamp',
-                 'shortcode_media.edge_media_preview_like.count': 'like_count',
-                 'shortcode_media.location.id': 'location_id',
-                 'shortcode_media.location.has_public_page': 'location_has_public_page',
-                 'shortcode_media.location.name': 'location_name',
-                 'shortcode_media.location.slug': 'location_slug',
-                 'shortcode_media.location.address_json': 'location_json',
-                 'shortcode_media.owner.id': 'owner_id',
-                 'shortcode_media.owner.is_verified': 'owner_is_verified',
-                 'shortcode_media.owner.profile_pic_url': 'owner_profile_pic_url',
-                 'shortcode_media.owner.username': 'owner_username',
-                 'shortcode_media.owner.full_name': 'owner_full_name',
-                 'shortcode_media.owner.is_private': 'owner_is_private',
-                 'shortcode_media.owner.is_unpublished': 'owner_is_unpublished',
-                 'shortcode_media.owner.pass_tiering_recommendation': 'tiering_recommendation',
-                 'shortcode_media.owner.edge_owner_to_timeline_media.count': 'owner_media_count',
-                 'shortcode_media.owner.edge_followed_by.count': 'owner_edge_followed_by_count',
-                 'shortcode_media.is_ad': 'is_ad',
-                 'shortcode_media.edge_sidecar_to_children.edges': 'multiple_photos',
-                 'shortcode_media.video_duration': 'video_duration',
-                 'shortcode_media.product_type': 'product_type'}
-DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
-WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: selenium.webdriver.Chrome,
-                                 OPTIONS_KEY: selenium.webdriver.chrome.options.Options},
-                      'FIREFOX': {DRIVER_KEY: selenium.webdriver.Firefox,
-                                  OPTIONS_KEY: selenium.webdriver.FirefoxOptions}}
-
 
 class Driver(object):
     DEFAULT_IMPLICIT_WAIT = 50
+    DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
+    WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: selenium.webdriver.Chrome,
+                                     OPTIONS_KEY: selenium.webdriver.chrome.options.Options},
+                          'FIREFOX': {DRIVER_KEY: selenium.webdriver.Firefox,
+                                      OPTIONS_KEY: selenium.webdriver.FirefoxOptions}}
 
-    def __init__(self, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT, executable: Union[str, Path, None] = None,
-                 *options):
+    def __init__(self, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
+                 executable: Union[str, Path, None] = None, *options):
         """
         Driver is an object for generating and setting selenium webdriver object with more friendly API and some
         limited options that are suitable for the task of url scrapping from instagram hashtag web pages
@@ -93,16 +50,16 @@ class Driver(object):
         :return: None
         """
         while True:  # checking that the selected browser is supported
-            browser_dict = WEBDRIVER_BROWSERS.get(self._browser.upper(), None)
+            browser_dict = Driver.WEBDRIVER_BROWSERS.get(self._browser.upper(), None)
             if browser_dict:
                 break
             print('You choose {} as your web browser. Unfortunately your choice of browser is '
                   'unsupported'.format(self._browser))
             proceed()
             self._browser = input('Please choose one of the following '
-                                  'browsers :\t{}'.format('|'.join(WEBDRIVER_BROWSERS.keys())))
+                                  'browsers :\t{}'.format('|'.join(Driver.WEBDRIVER_BROWSERS.keys())))
 
-        browser_obj, options_obj = browser_dict[DRIVER_KEY], browser_dict[OPTIONS_KEY]
+        browser_obj, options_obj = browser_dict[Driver.DRIVER_KEY], browser_dict[Driver.OPTIONS_KEY]
 
         while True:  # validate implicit wait attribute
             try:
@@ -451,6 +408,49 @@ def get_hashtags(text):
     return p.findall(text)
 
 
+# constants for argparse
+
+HEADLESS_MODE = '--headless'
+DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
+                  'like_count', 'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
+                  'owner_edge_followed_by_count', 'is_ad']
+COL_NAME_DICT = {'shortcode_media.__typename': 'type',
+                 'shortcode_media.id': 'id',
+                 'shortcode_media.shortcode': 'shortcode',
+                 'shortcode_media.dimensions.height': 'dim_height',
+                 'shortcode_media.dimensions.width': 'dim_width',
+                 'shortcode_media.display_url': 'photo_url',
+                 'shortcode_media.accessibility_caption': 'ai_comment',
+                 'shortcode_media.is_video': 'is_video',
+                 'shortcode_media.edge_media_to_tagged_user.edges': 'user_details',
+                 'shortcode_media.edge_media_to_caption.edges': 'post_text',
+                 'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
+                 'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
+                 'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
+                 'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
+                 'shortcode_media.comments_disabled': 'comments_disabled',
+                 'shortcode_media.taken_at_timestamp': 'timestamp',
+                 'shortcode_media.edge_media_preview_like.count': 'like_count',
+                 'shortcode_media.location.id': 'location_id',
+                 'shortcode_media.location.has_public_page': 'location_has_public_page',
+                 'shortcode_media.location.name': 'location_name',
+                 'shortcode_media.location.slug': 'location_slug',
+                 'shortcode_media.location.address_json': 'location_json',
+                 'shortcode_media.owner.id': 'owner_id',
+                 'shortcode_media.owner.is_verified': 'owner_is_verified',
+                 'shortcode_media.owner.profile_pic_url': 'owner_profile_pic_url',
+                 'shortcode_media.owner.username': 'owner_username',
+                 'shortcode_media.owner.full_name': 'owner_full_name',
+                 'shortcode_media.owner.is_private': 'owner_is_private',
+                 'shortcode_media.owner.is_unpublished': 'owner_is_unpublished',
+                 'shortcode_media.owner.pass_tiering_recommendation': 'tiering_recommendation',
+                 'shortcode_media.owner.edge_owner_to_timeline_media.count': 'owner_media_count',
+                 'shortcode_media.owner.edge_followed_by.count': 'owner_edge_followed_by_count',
+                 'shortcode_media.is_ad': 'is_ad',
+                 'shortcode_media.edge_sidecar_to_children.edges': 'multiple_photos',
+                 'shortcode_media.video_duration': 'video_duration',
+                 'shortcode_media.product_type': 'product_type'}
+
 def arg_parser():
     parser = argparse.ArgumentParser(prog='coronagram.py', description=f'#### Instagram Scrapping ####\n',
                                      epilog=f'List of possible fields to choose:\n'
@@ -465,7 +465,7 @@ def arg_parser():
                                                                     f' {" ".join(DEFAULT_FIELDS)}')
     parser.add_argument('-b', '--browser', type=str, default='CHROME', help='browser choice to be used by selenium. '
                                                                             'supported browsers:\t{}'
-                        .format('|'.join(WEBDRIVER_BROWSERS.keys())))
+                        .format('|'.join(Driver.WEBDRIVER_BROWSERS.keys())))
     parser.add_argument('-e', '--executable', type=str, default=None, help='a path to the driver executable file. '
                                                                            'If none is given it will be assumed that '
                                                                            'the driver was added and available as an '
