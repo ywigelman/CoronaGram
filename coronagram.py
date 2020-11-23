@@ -15,6 +15,7 @@ import regex as re
 import sys
 from pathlib import Path
 from typing import Union
+from  CoronaGram import db_control
 
 
 class Driver(object):
