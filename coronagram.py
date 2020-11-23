@@ -14,7 +14,7 @@ from urllib.request import urlopen
 import regex as re
 from pathlib import Path
 from typing import Union
-from  CoronaGram import db_control
+from db_control import DBControl
 
 
 class ClassAttributeError(Exception):
@@ -162,6 +162,7 @@ class HashTagPage(object):
         self._stop_scrapping = False  # a flag that indicates if scrolling reached bottom of the web page
         self._break = False  # a flag that indicates stop automated scrolling and start collecting
         # (only relevant if from_code was provided)
+        self._dbc = DBControl()
 
     def _set_scroll_pause_range(self, minimum: int, maximum: int) -> np.ndarray:
         """
@@ -237,7 +238,7 @@ class HashTagPage(object):
                 self.close()
                 return
             self._shortcode_page_scraper()
-            yield self._shortcode_batch
+            self._dbc.insert_shortcodes(self._shortcode_batch)
             self._shortcode_batch = []
             self._scroll()
 
