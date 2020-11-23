@@ -4,7 +4,11 @@ DB_NAME = 'itc1'
 
 class DBControl():
 
-    def __init__(self, database=DB_NAME, host="localhost", user="yairstemmer", password="1234"):
+    def __init__(self, database=DB_NAME, host="localhost", user="root", password=""):
+        '''
+        To change password in mysql line:
+        ALTER USER 'root'@'localhost' IDENTIFIED BY '';
+        '''
         self.database = database
         self.host = host
         self.user = user
