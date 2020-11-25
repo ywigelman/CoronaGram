@@ -1,19 +1,20 @@
-from bs4 import BeautifulSoup as bs
-import time
-import json
-import selenium.webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import WebDriverException
-from random import choice
-from multiprocessing import Pool, cpu_count
-import pandas as pd
-import numpy as np
-from copy import copy
 import argparse
-from urllib.request import urlopen
-import regex as re
+import json
+import time
+from copy import copy
+from multiprocessing import Pool, cpu_count
 from pathlib import Path
+from random import choice
 from typing import Union
+import pandas as pd
+import regex as re
+from urllib.request import urlopen
+import selenium.webdriver as wd
+from selenium.common.exceptions import NoSuchElementException
+from bs4 import BeautifulSoup
+from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.chrome.options import Options
+from conf import *
 from db_control import DBControl
 
 
@@ -33,13 +34,10 @@ class ClassAttributeError(Exception):
 
 
 class Driver(object):
-    HEADLESS_MODE = '--headless'  # command for running in headless mode
-    DEFAULT_IMPLICIT_WAIT = 50
-    DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
-    WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: selenium.webdriver.Chrome,
-                                     OPTIONS_KEY: selenium.webdriver.chrome.options.Options},
-                          'FIREFOX': {DRIVER_KEY: selenium.webdriver.Firefox,
-                                      OPTIONS_KEY: selenium.webdriver.FirefoxOptions}}
+    WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: wd.Chrome,
+                                     OPTIONS_KEY: wd.chrome.options.Options},
+                          'FIREFOX': {DRIVER_KEY: wd.Firefox,
+                                      OPTIONS_KEY: wd.FirefoxOptions}}
 
     def __init__(self, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
                  executable: Union[str, Path, None] = None, *options):
@@ -72,7 +70,7 @@ class Driver(object):
         if self._browser not in self.WEBDRIVER_BROWSERS:
             raise ClassAttributeError(self._browser, Driver.__class__.__name__, 'browser')
         browser_dict = self.WEBDRIVER_BROWSERS[self._browser]
-        return browser_dict[Driver.DRIVER_KEY], browser_dict[Driver.OPTIONS_KEY]
+        return browser_dict[DRIVER_KEY], browser_dict[OPTIONS_KEY]
 
     def _validate_implicit_wait(self) -> None:
         """
@@ -94,7 +92,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        options.append(self.HEADLESS_MODE)  # adding headless mode as default
+        options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
             try:
@@ -117,7 +115,7 @@ class Driver(object):
             raise ClassAttributeError(self._executable, self.__class__.__name__, 'executable')
 
     @property
-    def driver(self) -> selenium.webdriver:
+    def driver(self) -> wd:
         """
         property method to get driver
         :return:  selenium webdriver object
@@ -126,20 +124,11 @@ class Driver(object):
 
 
 class HashTagPage(object):
-    SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'
-    # java scrip command for scrolling to page bottom
-    SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for getting scroll height
-    HASHTAG_URL_TEMPLATE = 'https://www.instagram.com/explore/tags/{}/?h__a=1'
-    STEP_SIZE = 0.1
-    DEFAULT_MAX_WAIT_AFTER_SCROLL = 3
-    DEFAULT_MIN_WAIT_AFTER_SCROLL = 1
-    DEFAULT_LIMIT = np.inf
-    DEFAULT_FROM_CODE = None
-    DEFAULT_STOP_CODE = None
 
-    def __init__(self, hashtag: str, driver: Driver, max_scroll_wait: int = DEFAULT_MAX_WAIT_AFTER_SCROLL,
-                 min_scroll_wait: int = DEFAULT_MIN_WAIT_AFTER_SCROLL, from_code: str = DEFAULT_FROM_CODE,
-                 stop_code: str = DEFAULT_STOP_CODE, limit=DEFAULT_LIMIT):
+    def __init__(self, hashtag: str, user_name: str, password: str, driver: Driver,
+                 max_scroll_wait: int = DEFAULT_MAX_WAIT_AFTER_SCROLL,
+                 min_scroll_wait: int = DEFAULT_MIN_WAIT_AFTER_SCROLL, from_code: Union[str, None] = DEFAULT_FROM_CODE,
+                 stop_code: Union[str, None] = DEFAULT_STOP_CODE, limit=DEFAULT_LIMIT):
         """
         HashTagPage is an object that represents a dynamic instagram hashtag page with infinite scrolls
         :param hashtag: str that represents the hashtag page to open
@@ -153,6 +142,8 @@ class HashTagPage(object):
         super().__init__()
         self._hashtag = hashtag
         self._driver_obj = driver
+        self._user_name = user_name
+        self._password = password
         self._scroll_pause_time_range = self._set_scroll_pause_range(min_scroll_wait, max_scroll_wait)
         self._limit = limit
         self._validate_limit()
@@ -178,7 +169,7 @@ class HashTagPage(object):
             raise ClassAttributeError(minimum, self.__class__.__name__,
                                       'max_scroll_wait', 'max_scroll_wait should be a positive integer that is larger '
                                                          'than min_scroll_wait')
-        return np.arange(minimum, maximum, self.STEP_SIZE)
+        return np.arange(minimum, maximum, STEP_SIZE)
 
     def _validate_limit(self) -> None:
         """
@@ -200,7 +191,7 @@ class HashTagPage(object):
         will allow the driver to load new information and avoid detection (hopefully).
         :return: None
         """
-        self._driver_obj.driver.execute_script(HashTagPage.SCROLL_2_BOTTOM)  # Scroll to the bottom of the page
+        self._driver_obj.driver.execute_script(SCROLL_2_BOTTOM)  # Scroll to the bottom of the page
         time.sleep(choice(self._scroll_pause_time_range))  # random wait between each scroll
         if self.page_height == self._previous_height:  # if previous height is equal to new height
             self._stop_scrapping = True
@@ -220,13 +211,11 @@ class HashTagPage(object):
                                 5) perform another scroll
         :return: None
         """
-        end_of_scrape_msg = 'scraping is done - either you scraped everything, ' \
-                            'reached your limit or something went wrong.\n(lets hope it\'s the first one)'
         self.open()
         if self._from_code:
             while True:
                 if self._stop_scrapping:
-                    print(end_of_scrape_msg)
+                    print(END_OF_SHORT_CODE_SCAPE_MSG)
                     self.close()
                     return
                 elif self._break:
@@ -234,7 +223,7 @@ class HashTagPage(object):
                 self._keep_scrolling()
         while True:
             if self._stop_scrapping:
-                print(end_of_scrape_msg)
+                print(END_OF_SHORT_CODE_SCAPE_MSG)
                 self.close()
                 return
             self._shortcode_page_scraper()
@@ -295,14 +284,28 @@ class HashTagPage(object):
         property method that returns the current webpage height
         :return: int object that represents the page current height of the webpage
         """
-        return self._driver_obj.driver.execute_script(HashTagPage.SCROLL_HEIGHT)
+        return self._driver_obj.driver.execute_script(SCROLL_HEIGHT)
 
     def open(self) -> None:
         """
         a method for opening an hashtag webpage
         :return: None
         """
-        self._driver_obj.driver.get(HashTagPage.HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
+        self._driver_obj.driver.get(ACCOUNT_LOG_IN)
+        time.sleep(3)
+        self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_USER_NAME_TAG).send_keys(self._user_name)
+        self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_PASSWORD_TAG).send_keys(self._password)
+        self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_SUBMIT_TAG).click()
+        time.sleep(3)
+        try:
+            self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
+            time.sleep(3)
+
+            self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
+            time.sleep(3)
+        except NoSuchElementException:
+            pass
+        self._driver_obj.driver.get(HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
 
     def close(self):
         """
@@ -313,112 +316,58 @@ class HashTagPage(object):
 
 
 class MultiScraper(object):
-    pass
 
-# constants for post scraping function:
-POST_KEY_WORD = 'window._sharedData = '
+    @staticmethod
+    def _get_hashtags(text):
+        """
+        :param text:
+        :return:
+        """
+        p = re.compile(r'#(\w*)')
+        return p.findall(text)
 
+    def _post_scraping(self, shortcode):
+        """
+        :param shortcode:
+        :return:
+        """
+        url = WEBSITE_URL + 'p/' + shortcode
+        record = pd.json_normalize(json.loads('{}'))
+        try:
+            response = urlopen(url)
+            body = BeautifulSoup(response, 'html.parser').find('body')
+            script = body.find('script', text=lambda t: t.startswith(POST_KEY_WORD))
+            page_json, = filter(None, script.string.rstrip(';').split(POST_KEY_WORD, 1))
+            posts, = json.loads(page_json)['entry_data']['PostPage']
+            record = pd.json_normalize(posts['graphql'])
+            record.rename(COL_NAME_DICT, inplace=True)  # todo Yair check name
+            record['hashtag'] = record['post_text'].apply(self._get_hashtags)
+        except KeyError:  # todo yoav check for what happens if you are blocked
+            print('y')
+        finally:
+            return record
 
-## todo built a class for submitting: step 1 collecting short codes, step 2, checking with DB for duplicates,
-## todo step3 getting updated list of shorts
-
-def post_scraping(url: str):
-    try:
-        source = urlopen(url)
-        body = bs(source, 'html.parser').find('body')
-        script = body.find('script', text=lambda t: t.startswith(POST_KEY_WORD))
-        page_json, = filter(None, script.string.rstrip(';').split(POST_KEY_WORD, 1))
-        posts, = json.loads(page_json)['entry_data']['PostPage']
-        return posts['graphql']
-    except Exception as e:
-        print(e)
-        return json.loads('{}')
-
-
-def normalize(json_record: json):
-    return pd.json_normalize(json_record)
-
-
-def multi_scraper(hashtag_page: HashTagPage, available_cpus: int):
-    json_records = []
-    try:
-        for url_batch in hashtag_page.shortcode_batch_generator():
-            with Pool(processes=available_cpus) as p:
-                json_records.extend(p.map(post_scraping, url_batch))
-                print('done scrapping a total of {} posts. so far...'.format(hashtag_page.scraped_shortcodes))
-    except Exception as general_error:    # several web related exception
-        print('an unexpected error has occurred\n{}'.format(general_error))
-    finally:
-        with Pool(processes=available_cpus) as normalization:
-            pandas_records = normalization.map(normalize, json_records)
-        return pd.concat(pandas_records).astype(str).drop_duplicates().reset_index(drop=True)
-
-
-def get_hashtags(text):
-    p = re.compile(r'#(\w*)')
-    return p.findall(text)
-
-
-# constants for argparse
-
-#DEFAULT_FIELDS = ['id', 'shortcode', 'timestamp', 'photo_url', 'post_text', 'preview_comment', 'ai_comment',
-#                  'like_count', 'location_name', 'owner_profile_pic_url', 'owner_username', 'owner_full_name',
-#                  'owner_edge_followed_by_count', 'is_ad']
-
-COL_NAME_DICT = {'shortcode_media.__typename': 'type',
-                 'shortcode_media.id': 'id',
-                 'shortcode_media.shortcode': 'shortcode',
-                 'shortcode_media.dimensions.height': 'dim_height',
-                 'shortcode_media.dimensions.width': 'dim_width',
-                 'shortcode_media.display_url': 'photo_url',
-                 'shortcode_media.accessibility_caption': 'ai_comment',
-                 'shortcode_media.is_video': 'is_video',
-                 'shortcode_media.edge_media_to_tagged_user.edges': 'user_details',
-                 'shortcode_media.edge_media_to_caption.edges': 'post_text',
-                 'shortcode_media.edge_media_to_parent_comment.count': 'comment_count',
-                 'shortcode_media.edge_media_to_parent_comment.edges': 'comments',
-                 'shortcode_media.edge_media_preview_comment.count': 'preview_comment_count',
-                 'shortcode_media.edge_media_preview_comment.edges': 'preview_comment',
-                 'shortcode_media.comments_disabled': 'comments_disabled',
-                 'shortcode_media.taken_at_timestamp': 'timestamp',
-                 'shortcode_media.edge_media_preview_like.count': 'like_count',
-                 'shortcode_media.location.id': 'location_id',
-                 'shortcode_media.location.has_public_page': 'location_has_public_page',
-                 'shortcode_media.location.name': 'location_name',
-                 'shortcode_media.location.slug': 'location_slug',
-                 'shortcode_media.location.address_json': 'location_json',
-                 'shortcode_media.owner.id': 'owner_id',
-                 'shortcode_media.owner.is_verified': 'owner_is_verified',
-                 'shortcode_media.owner.profile_pic_url': 'owner_profile_pic_url',
-                 'shortcode_media.owner.username': 'owner_username',
-                 'shortcode_media.owner.full_name': 'owner_full_name',
-                 'shortcode_media.owner.is_private': 'owner_is_private',
-                 'shortcode_media.owner.is_unpublished': 'owner_is_unpublished',
-                 'shortcode_media.owner.pass_tiering_recommendation': 'tiering_recommendation',
-                 'shortcode_media.owner.edge_owner_to_timeline_media.count': 'owner_media_count',
-                 'shortcode_media.owner.edge_followed_by.count': 'owner_edge_followed_by_count',
-                 'shortcode_media.is_ad': 'is_ad',
-                 'shortcode_media.edge_sidecar_to_children.edges': 'multiple_photos',
-                 'shortcode_media.video_duration': 'video_duration',
-                 'shortcode_media.product_type': 'product_type'}
-
-
-DEFAULT_FIELDS = ['shortcode', 'timestamp', 'ai_comment', 'like_count', 'location_name', 'owner_username',
-                  'owner_edge_followed_by_count', 'owner_media_count', 'comment_count']
+    def multiprocess_scraper(self, cpu):
+        """
+        :param cpu:
+        :return:
+        """
+        json_records = []
+        dbc = DBControl()
+        for short_code_batch in dbc.shortcodes_list_for_scraping(cpu):
+            with Pool(processes=cpu) as p:
+                x = p.map(self._post_scraping, short_code_batch)
+                json_records.extend(x)
+                # todo Yair, add a line that checks if enough records to commit and commit
 
 
 def arg_parser():
     parser = argparse.ArgumentParser(prog='coronagram.py', description=f'#### Instagram Scrapping ####\n',
-                                     epilog=f'List of possible fields to choose:\n'
-                                            f'{" ".join(list(COL_NAME_DICT.values()))}',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('tag', type=str, help='Choose a #hashtag')
+    parser.add_argument('name', type=str, help='instagram user name')
+    parser.add_argument('password', type=str, help='instagram user password')
     parser.add_argument('-l', '--limit', type=int, default=np.inf, help='number of posts to scrape')
-    parser.add_argument('-f', '--fields', nargs='*', type=str, help='Choose posts fields to keep. '
-                                                                    'If no -f, default fields will be printed. '
-                                                                    'If -f only without fields, all json fields will be'
-                                                                    f' printed. Defaults fields are:'
-                                                                    f' {" ".join(DEFAULT_FIELDS)}')
     parser.add_argument('-b', '--browser', type=str, default='CHROME', help='browser choice to be used by selenium. '
                                                                             'supported browsers:\t{}'
                         .format('|'.join(Driver.WEBDRIVER_BROWSERS.keys())))
@@ -444,34 +393,23 @@ def arg_parser():
 
     args = parser.parse_args()
 
-
-    json_fields = []
-    if args.fields is None:
-        fields = DEFAULT_FIELDS
-    else:
-        fields = args.fields
-
-    for field in fields:
-        json_fields.append(field)
-
     if args.cpu <= 0:
         args.cpu = 1
 
-    return args.tag, args.limit, json_fields, args.browser, args.executable, args.cpu, args.from_code, args.stop_code, \
-           args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
+    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.cpu, args.from_code, \
+           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
 
 
 def main():
-    tag, limit, fields, browser, executable, cpu, from_code, stop_code, implicit_wait, driver_options, \
-    min_scroll_wait, max_scroll_wait = arg_parser()
-    driver = Driver(browser, implicit_wait, executable, driver_options)
-    hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, limit)
-    records = multi_scraper(hashtag_page, cpu)
 
-    records = records.rename(columns=COL_NAME_DICT)
-    records['hashtag'] = records['post_text'].apply(get_hashtags)  # adding hashtag tags
-    records = records.loc[:, fields]
-    print(records)
+    tag, limit, name, password, browser, executable, cpu, from_code, stop_code, implicit_wait, driver_options, \
+    min_scroll_wait, max_scroll_wait = arg_parser()
+
+    driver = Driver(browser, implicit_wait, executable, driver_options)
+    hashtag_page = HashTagPage(tag, name, password, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code,
+                               limit)
+    hashtag_page.shortcode_batch_generator()
+    MultiScraper().multiprocess_scraper(cpu)
 
 
 if __name__ == '__main__':
