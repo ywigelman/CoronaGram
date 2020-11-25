@@ -207,7 +207,7 @@ class HashTagPage(object):
         else:
             self._previous_height = copy(self.page_height)  # change back to deepcopy if there is an issue
 
-    def shortcode_batch_generator(self) -> list:
+    def shortcode_batch_generator(self):
         """
         generator method is used for scraping data from pages with infinite scrolling. this method works with
         the following steps:
@@ -218,7 +218,7 @@ class HashTagPage(object):
                                 3) yield a batch (list) of all shortcodes collected from the current scroll state
                                 4) reset/empty shortcode batch container to prepare for another round
                                 5) perform another scroll
-        :return: list object in every round
+        :return: None
         """
         end_of_scrape_msg = 'scraping is done - either you scraped everything, ' \
                             'reached your limit or something went wrong.\n(lets hope it\'s the first one)'

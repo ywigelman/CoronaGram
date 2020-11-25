@@ -2,8 +2,8 @@ import mysql.connector
 
 DB_NAME = 'itc1'
 
-class DBControl():
 
+class DBControl():
     def __init__(self, database=DB_NAME, host="localhost", user="root", password=""):
         '''
         To change password in mysql line:
