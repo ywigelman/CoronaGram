@@ -16,6 +16,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from conf import *
 from db_control import DBControl
+import ssl
 
 
 class ClassAttributeError(Exception):
@@ -39,7 +40,7 @@ class Driver(object):
                           'FIREFOX': {DRIVER_KEY: wd.Firefox,
                                       OPTIONS_KEY: wd.FirefoxOptions}}
 
-    def __init__(self, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
+    def __init__(self, user_name: str, password: str, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
                  executable: Union[str, Path, None] = None, *options):
         """
         Driver is an object for generating and setting selenium webdriver object with more friendly API and some
@@ -52,6 +53,8 @@ class Driver(object):
         :param options: represents a variable number of java script optional arguments that will be injected to the
         browser argument with selenium webdriver API
         """
+        self._user_name = user_name
+        self._password = password
         self._browser = browser
         self._driver, self._options = self._browser_dict()  # selecting suitable driver and option objects
         self._set_options(list(*options))  # setting option object
@@ -60,6 +63,7 @@ class Driver(object):
         self._validate_implicit_wait()
         self._set_driver()
         self._driver.implicitly_wait(self._implicit_wait)  # setting browser
+        self._logged_in = False
 
     def _browser_dict(self) -> tuple:
         """
@@ -92,7 +96,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        options.append(HEADLESS_MODE)  # adding headless mode as default
+        #options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
             try:
@@ -122,16 +126,44 @@ class Driver(object):
         """
         return self._driver
 
+    def login(self):
+        """
+        a method for opening an instagram url webpage. first by logging in, than accessing the required page
+        :return: None
+        """
+        self.driver.get(ACCOUNT_LOG_IN)
+        time.sleep(LOGIN_PAGE_WAIT)
+        self.driver.find_element_by_xpath(INSTAGRAM_USER_NAME_TAG).send_keys(self._user_name)
+        self.driver.find_element_by_xpath(INSTAGRAM_PASSWORD_TAG).send_keys(self._password)
+        self.driver.find_element_by_xpath(INSTAGRAM_SUBMIT_TAG).click()
+        time.sleep(LOGIN_PAGE_WAIT)
+        self._logged_in = True
+
+    def _not_now(self):
+        self.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
+        time.sleep(LOGIN_PAGE_WAIT)
+        self.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
+        time.sleep(LOGIN_PAGE_WAIT)
+
+    def open(self, url) -> None:
+        if not self._logged_in:
+            self.login()
+        try:
+            self._not_now()
+        except NoSuchElementException:
+            pass
+        self.driver.get(url)
+
 
 class HashTagPage(object):
 
-    def __init__(self, hashtag: str, user_name: str, password: str, driver: Driver,
+    def __init__(self, hashtag: str, driver: Driver,
                  max_scroll_wait: int = DEFAULT_MAX_WAIT_AFTER_SCROLL,
                  min_scroll_wait: int = DEFAULT_MIN_WAIT_AFTER_SCROLL, from_code: Union[str, None] = DEFAULT_FROM_CODE,
                  stop_code: Union[str, None] = DEFAULT_STOP_CODE, limit=DEFAULT_LIMIT):
         """
         HashTagPage is an object that represents a dynamic instagram hashtag page with infinite scrolls
-        :param hashtag: str that represents the hashtag page to open
+        :param hashtag: str that represents the hashtag url page to open
         :param driver: Driver object to use in order to get hashtag page
         :param max_scroll_wait: int or None that represents maximum wait time after each scroll in hashtag page
         :param min_scroll_wait: int or None that represents minimum wait time after each scroll in hashtag page
@@ -142,8 +174,6 @@ class HashTagPage(object):
         super().__init__()
         self._hashtag = hashtag
         self._driver_obj = driver
-        self._user_name = user_name
-        self._password = password
         self._scroll_pause_time_range = self._set_scroll_pause_range(min_scroll_wait, max_scroll_wait)
         self._limit = limit
         self._validate_limit()
@@ -211,12 +241,12 @@ class HashTagPage(object):
                                 5) perform another scroll
         :return: None
         """
-        self.open()
+        self._driver_obj.open(HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
         if self._from_code:
             while True:
                 if self._stop_scrapping:
                     print(END_OF_SHORT_CODE_SCAPE_MSG)
-                    self.close()
+                    self._driver_obj.driver.close()
                     return
                 elif self._break:
                     break
@@ -224,7 +254,7 @@ class HashTagPage(object):
         while True:
             if self._stop_scrapping:
                 print(END_OF_SHORT_CODE_SCAPE_MSG)
-                self.close()
+                self._driver_obj.driver.close()
                 return
             self._shortcode_page_scraper()
             self._dbc.insert_shortcodes(self._shortcode_batch)
@@ -286,36 +316,11 @@ class HashTagPage(object):
         """
         return self._driver_obj.driver.execute_script(SCROLL_HEIGHT)
 
-    def open(self) -> None:
-        """
-        a method for opening an hashtag webpage
-        :return: None
-        """
-        self._driver_obj.driver.get(ACCOUNT_LOG_IN)
-        time.sleep(3)
-        self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_USER_NAME_TAG).send_keys(self._user_name)
-        self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_PASSWORD_TAG).send_keys(self._password)
-        self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_SUBMIT_TAG).click()
-        time.sleep(3)
-        try:
-            self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
-            time.sleep(3)
-
-            self._driver_obj.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
-            time.sleep(3)
-        except NoSuchElementException:
-            pass
-        self._driver_obj.driver.get(HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
-
-    def close(self):
-        """
-        method for closing a driver at the end of the scrapping session
-        :return:
-        """
-        self._driver_obj.driver.close()
-
 
 class MultiScraper(object):
+
+    def __init__(self, *driver_setup):
+        self._driver_setup = driver_setup
 
     @staticmethod
     def _get_hashtags(text):
@@ -324,40 +329,50 @@ class MultiScraper(object):
         :return:
         """
         p = re.compile(r'#(\w*)')
-        return p.findall(text)
+        return p.findall(str(text))
 
-    def _post_scraping(self, shortcode):
+    def _post_scraping(self, shortcode_lst):
         """
-        :param shortcode:
+        :param shortcode_lst:
         :return:
         """
-        url = WEBSITE_URL + 'p/' + shortcode
-        record = pd.json_normalize(json.loads('{}'))
+        driver = Driver(*self._driver_setup)
+        driver.login()
         try:
-            response = urlopen(url)
-            body = BeautifulSoup(response, 'html.parser').find('body')
-            script = body.find('script', text=lambda t: t.startswith(POST_KEY_WORD))
-            page_json, = filter(None, script.string.rstrip(';').split(POST_KEY_WORD, 1))
-            posts, = json.loads(page_json)['entry_data']['PostPage']
-            record = pd.json_normalize(posts['graphql'])
-            record.rename(COL_NAME_DICT, inplace=True)  # todo Yair check name
-            record['hashtag'] = record['post_text'].apply(self._get_hashtags)
-        except KeyError:  # todo yoav check for what happens if you are blocked
-            print('y')
-        finally:
-            return record
+            driver._not_now()
+        except NoSuchElementException:
+            pass
+        record_lst = []
+        for shortcode in shortcode_lst:
+            try:
+                url = WEBSITE_URL + 'p/' + shortcode + '/?__a=1'
+                driver.driver.get(url)
+                record = json.loads(BeautifulSoup(driver.driver.page_source, 'html.parser').find('body').get_text())
+                record = pd.json_normalize(record)
+                record.rename(columns=COL_NAME_DICT, inplace=True)
+                record['hashtag'] = record['post_text'].apply(self._get_hashtags)
+                record_lst.append(record)
+            except KeyError:
+                continue
+        return record_lst
 
-    def multiprocess_scraper(self, cpu):
+    def multiprocess_scraper(self, cpu: int, batch_size: int):
         """
+        :param batch_size:
         :param cpu:
         :return:
         """
-        json_records = []
         dbc = DBControl()
-        for short_code_batch in dbc.shortcodes_list_for_scraping(cpu):
+        while True:
+            pool_lst = []
+            for worker in range(cpu):
+                batch = dbc.shortcodes_list_for_scraping(batch_size)
+                pool_lst.append(batch)
+            if not pool_lst:
+                return
             with Pool(processes=cpu) as p:
-                x = p.map(self._post_scraping, short_code_batch)
-                json_records.extend(x)
+                records = p.map(self._post_scraping, pool_lst)
+                pass
                 # todo Yair, add a line that checks if enough records to commit and commit
 
 
@@ -402,14 +417,15 @@ def arg_parser():
 
 def main():
 
-    tag, limit, name, password, browser, executable, cpu, from_code, stop_code, implicit_wait, driver_options, \
+    tag, name, password, limit, browser, executable, cpu, from_code, stop_code, implicit_wait, driver_options, \
     min_scroll_wait, max_scroll_wait = arg_parser()
-
-    driver = Driver(browser, implicit_wait, executable, driver_options)
-    hashtag_page = HashTagPage(tag, name, password, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code,
+    driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
+    driver = Driver(*driver_set_up)
+    hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code,
                                limit)
     hashtag_page.shortcode_batch_generator()
-    MultiScraper().multiprocess_scraper(cpu)
+    post_scraper = MultiScraper(*driver_set_up)
+    post_scraper.multiprocess_scraper(3, 10)
 
 
 if __name__ == '__main__':
