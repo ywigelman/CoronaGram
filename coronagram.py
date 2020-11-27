@@ -96,7 +96,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        #options.append(HEADLESS_MODE)  # adding headless mode as default
+        options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
             try:
