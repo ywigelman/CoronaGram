@@ -153,6 +153,32 @@ class DBControl():
         return shortcodes
 
 
+    def insert_posts(self, post_array):
+        posts_insert = []
+        column_to_insert = ('shortcode', 'id', 'owner_id', 'location_id', 'type', 'dim_height', 'dim_width', 'is_video', \
+                            'comment_count', 'preview_comment_count', 'comment_disabled', 'timestamp', 'like_count',
+                            'is_ad', 'video_duration', \
+                            'product_type')
+
+        for post in post_array:
+            post_columns_content = []
+            for column in column_to_insert:
+                try:
+                    value = post[column][0]
+                except KeyError:
+                    value = ''
+                post_columns_content.append(value)
+
+            post_columns_content = tuple(post_columns_content)
+            posts_insert.append(post_columns_content)
+
+        sql = "INSERT INTO post_info  VALUES (%s)"
+        self.cursor.executemany(sql, posts_insert)
+        self.mydb.commit()
+
+        # change in_process at the end for corresponding shortcode
+
+
 def main():
     shortcodes = [('/p/B_BaT-sBiPq/',), ('/p/B_HxtctgVao/',), ('/p/B_ioY0aHz3V/',)]
     # shortcodes = ['/p/B_BaT-sBiPq/', '/p/B_HxtctgVao/', '/p/B_ioY0aHz3V/']
