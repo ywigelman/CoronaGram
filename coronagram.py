@@ -2,13 +2,12 @@ import argparse
 import json
 import time
 from copy import copy
-from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from random import choice
 from typing import Union
 import pandas as pd
 import regex as re
-from urllib.request import urlopen
+from json.decoder import JSONDecodeError
 import selenium.webdriver as wd
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
@@ -16,7 +15,6 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from conf import *
 from db_control import DBControl
-import ssl
 
 
 class ClassAttributeError(Exception):
@@ -96,7 +94,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        options.append(HEADLESS_MODE)  # adding headless mode as default
+        # options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
             try:
@@ -246,7 +244,6 @@ class HashTagPage(object):
             while True:
                 if self._stop_scrapping:
                     print(END_OF_SHORT_CODE_SCAPE_MSG)
-                    self._driver_obj.driver.close()
                     return
                 elif self._break:
                     break
@@ -254,7 +251,6 @@ class HashTagPage(object):
         while True:
             if self._stop_scrapping:
                 print(END_OF_SHORT_CODE_SCAPE_MSG)
-                self._driver_obj.driver.close()
                 return
             self._shortcode_page_scraper()
             self._dbc.insert_shortcodes(self._shortcode_batch)
@@ -319,8 +315,8 @@ class HashTagPage(object):
 
 class MultiScraper(object):
 
-    def __init__(self, *driver_setup):
-        self._driver_setup = driver_setup
+    def __init__(self, driver):
+        self._driver = driver
 
     @staticmethod
     def _get_hashtags(text):
@@ -336,27 +332,21 @@ class MultiScraper(object):
         :param shortcode_lst:
         :return:
         """
-        driver = Driver(*self._driver_setup)
-        driver.login()
-        try:
-            driver._not_now()
-        except NoSuchElementException:
-            pass
         record_lst = []
         for shortcode in shortcode_lst:
             try:
                 url = WEBSITE_URL + 'p/' + shortcode + '/?__a=1'
-                driver.driver.get(url)
-                record = json.loads(BeautifulSoup(driver.driver.page_source, 'html.parser').find('body').get_text())
+                self._driver.driver.get(url)
+                record = json.loads(BeautifulSoup(self._driver.driver.page_source, 'html.parser').find('body').get_text())
                 record = pd.json_normalize(record)
                 record.rename(columns=COL_NAME_DICT, inplace=True)
                 record['hashtag'] = record['post_text'].apply(self._get_hashtags)
                 record_lst.append(record)
-            except KeyError:
+            except (KeyError, JSONDecodeError):
                 continue
         return record_lst
 
-    def multiprocess_scraper(self, cpu: int, batch_size: int):
+    def multiprocess_scraper(self, batch_size: int):
         """
         :param batch_size:
         :param cpu:
@@ -364,16 +354,12 @@ class MultiScraper(object):
         """
         dbc = DBControl()
         while True:
-            pool_lst = []
-            for worker in range(cpu):
-                batch = dbc.shortcodes_list_for_scraping(batch_size)
-                pool_lst.append(batch)
-            if not pool_lst:
+            batch = dbc.shortcodes_list_for_scraping(batch_size)
+            if not batch:
                 return
-            with Pool(processes=cpu) as p:
-                records = p.map(self._post_scraping, pool_lst)
-                pass
-                # todo Yair, add a line that checks if enough records to commit and commit
+            records = self._post_scraping(batch)
+            pass
+            # todo Yair, add a line that checks if enough records to commit and commit
 
 
 def arg_parser():
@@ -390,8 +376,8 @@ def arg_parser():
                                                                            'If none is given it will be assumed that '
                                                                            'the driver was added and available as an '
                                                                            'OS environment variable')
-    parser.add_argument('-c', '--cpu', type=int, default=cpu_count() - 1,
-                        help='number of cpu available for multiprocessing')
+    parser.add_argument('-d', '--db_batch', type=int, default=50,
+                        help='maximum number of records to insert and commit each time')
     parser.add_argument('-fc', '--from_code', type=str, help='url shortcode to start scraping from')
     parser.add_argument('-sc', '--stop_code', type=str, help='url shortcode that when reach will stop scrapping')
     parser.add_argument('-i', '--implicit_wait', type=int, default=50, help='implicit wait time for '
@@ -408,25 +394,26 @@ def arg_parser():
 
     args = parser.parse_args()
 
-    if args.cpu <= 0:
-        args.cpu = 1
-
-    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.cpu, args.from_code, \
+    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, args.from_code, \
            args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
 
 
 def main():
 
-    tag, name, password, limit, browser, executable, cpu, from_code, stop_code, implicit_wait, driver_options, \
+    tag, name, password, limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, driver_options, \
     min_scroll_wait, max_scroll_wait = arg_parser()
     driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
     driver = Driver(*driver_set_up)
     hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code,
                                limit)
     hashtag_page.shortcode_batch_generator()
-    post_scraper = MultiScraper(*driver_set_up)
-    post_scraper.multiprocess_scraper(3, 10)
+    post_scraper = MultiScraper(driver)
+    post_scraper.multiprocess_scraper(db_batch)
+    driver.driver.close()
 
 
 if __name__ == '__main__':
     main()
+
+
+"test mmm_testing_mmm v~)Mav2gTMLBaT) -l 50"
