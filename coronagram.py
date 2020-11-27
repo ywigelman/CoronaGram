@@ -94,6 +94,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
+        options.append('--lang = en - US')
         # options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
@@ -353,13 +354,15 @@ class MultiScraper(object):
         :return:
         """
         dbc = DBControl()
+        records = []
         while True:
             batch = dbc.shortcodes_list_for_scraping(batch_size)
             if not batch:
                 return
-            records = self._post_scraping(batch)
-            pass
-            # todo Yair, add a line that checks if enough records to commit and commit
+            records += self._post_scraping(batch)
+            if len(records) >= POST_LENGTH_TO_COMMIT:
+                dbc.insert_posts(records)
+                records = []
 
 
 def arg_parser():
@@ -383,7 +386,7 @@ def arg_parser():
     parser.add_argument('-i', '--implicit_wait', type=int, default=50, help='implicit wait time for '
                                                                                        'webdriver')
     # test that validate that this value is a non negative int
-    parser.add_argument('-do', '--driver_options', type=str, default=[], help='ava script optional arguments that will '
+    parser.add_argument('-do', '--driver_options', type=str, default=[], help='java script optional arguments that will '
                                                                               'be injected to the browser argument '
                                                                               'with selenium webdriver API',
                         action='append')

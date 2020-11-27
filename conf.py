@@ -59,9 +59,10 @@ SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for ge
 POST_KEY_WORD = 'window._sharedData = '
 HEADLESS_MODE = '--headless'  # command for running in headless mode
 
-DEFAULT_IMPLICIT_WAIT = 50
+DEFAULT_IMPLICIT_WAIT = 5
 DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
 
 END_OF_SHORT_CODE_SCAPE_MSG = 'scraping is done - either you scraped everything, reached your limit or something ' \
                               'went wrong.\n(lets hope it\'s the first one)'
 
+POST_LENGTH_TO_COMMIT = 2
