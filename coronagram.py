@@ -8,14 +8,13 @@ from typing import Union
 import pandas as pd
 import regex as re
 from json.decoder import JSONDecodeError
-import selenium.webdriver as wd
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.chrome.options import Options
 from conf import *
 from db_control import DBControl
-
+import logging
+import sys
 
 class ClassAttributeError(Exception):
     def __init__(self, wrong_input, class_name: str, attribute_name: str, additional: str = None):
@@ -33,16 +32,14 @@ class ClassAttributeError(Exception):
 
 
 class Driver(object):
-    WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: wd.Chrome,
-                                     OPTIONS_KEY: wd.chrome.options.Options},
-                          'FIREFOX': {DRIVER_KEY: wd.Firefox,
-                                      OPTIONS_KEY: wd.FirefoxOptions}}
 
     def __init__(self, user_name: str, password: str, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
-                 executable: Union[str, Path, None] = None, *options):
+                 executable: Union[str, Path, None] = DEFAULT_EXECUTABLE, *options):
         """
         Driver is an object for generating and setting selenium webdriver object with more friendly API and some
         limited options that are suitable for the task of url scrapping from instagram hashtag web pages
+        :param user_name: str object that represents instagram account user name
+        :param password: str object that represents instagram account password
         :param browser: str object that represents the type of browser to use
         :param implicit_wait: an int object that represents an implicit wait time (in seconds) for the driver to
         load elements (DOM) in the required web page
@@ -69,9 +66,9 @@ class Driver(object):
         user have selected
         :return: tuple
         """
-        if self._browser not in self.WEBDRIVER_BROWSERS:
+        if self._browser not in WEBDRIVER_BROWSERS:
             raise ClassAttributeError(self._browser, Driver.__class__.__name__, 'browser')
-        browser_dict = self.WEBDRIVER_BROWSERS[self._browser]
+        browser_dict = WEBDRIVER_BROWSERS[self._browser]
         return browser_dict[DRIVER_KEY], browser_dict[OPTIONS_KEY]
 
     def _validate_implicit_wait(self) -> None:
@@ -94,7 +91,6 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        # options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
             try:
@@ -124,9 +120,17 @@ class Driver(object):
         """
         return self._driver
 
+    @property
+    def logged_in(self):
+        """
+        property method that returns the log in status
+        :return:
+        """
+        return self._logged_in
+
     def login(self):
         """
-        a method for opening an instagram url webpage. first by logging in, than accessing the required page
+        a method for logging in instagram
         :return: None
         """
         self.driver.get(ACCOUNT_LOG_IN)
@@ -135,7 +139,14 @@ class Driver(object):
         self.driver.find_element_by_xpath(INSTAGRAM_PASSWORD_TAG).send_keys(self._password)
         self.driver.find_element_by_xpath(INSTAGRAM_SUBMIT_TAG).click()
         time.sleep(LOGIN_PAGE_WAIT)
-        self._logged_in = True
+        source = BeautifulSoup(self.driver.page_source, 'html.parser')
+        if source.find('p'):
+            logging.info('log in: Failure')
+            sys.exit()
+        else:
+            logging.info('log in: Success')
+            self._logged_in = True
+            return
 
     def _not_now(self):
         self.driver.find_element_by_xpath(INSTAGRAM_NOT_NOW_BUTTON).click()
@@ -144,11 +155,13 @@ class Driver(object):
         time.sleep(LOGIN_PAGE_WAIT)
 
     def open(self, url) -> None:
-        if not self._logged_in:
+        if not self.logged_in:
             self.login()
+            self._logged_in = True
         try:
             self._not_now()
-        except NoSuchElementException:
+        except NoSuchElementException:  # sometimes there are pop ups for keeping user name and password as well
+            # as notifications for allowing automatic notification - I'll try ignore those
             pass
         self.driver.get(url)
 
@@ -239,7 +252,7 @@ class HashTagPage(object):
                                 5) perform another scroll
         :return: None
         """
-        self._driver_obj.open(HASHTAG_URL_TEMPLATE.format(str(self._hashtag)))
+        self._driver_obj.open(HASHTAG_URL_TEMPLATE.format(self._hashtag))
         if self._from_code:
             while True:
                 if self._stop_scrapping:
@@ -313,31 +326,40 @@ class HashTagPage(object):
         return self._driver_obj.driver.execute_script(SCROLL_HEIGHT)
 
 
-class MultiScraper(object):
+class PostScraper(object):
 
-    def __init__(self, driver):
+    def __init__(self, driver: Driver):
+        """
+        PostScraper is an object made for scarping instagram pages and insert the results into an SQL database
+        :param driver: Driver object with predefine options able to connect to post pages
+        """
         self._driver = driver
+        if not self._driver.logged_in:
+            self._driver.login()
 
     @staticmethod
     def _get_hashtags(text):
         """
-        :param text:
-        :return:
+        a static method for extracting hash tags from post
+        :param text: an object representing a text containing hashtag to exctract
+        :return: list of hashtags
         """
         p = re.compile(r'#(\w*)')
         return p.findall(str(text))
 
-    def _post_scraping(self, shortcode_lst):
+    def _post_scraping(self, shortcode_lst: list) -> list:
         """
-        :param shortcode_lst:
-        :return:
+        a method for scraping post information from a list of shortcodes
+        :param shortcode_lst: a list object that contain post short codes for scrapping
+        :return: a list of pandas records containing posts scrape data
         """
         record_lst = []
         for shortcode in shortcode_lst:
             try:
-                url = WEBSITE_URL + 'p/' + shortcode + '/?__a=1'
+                url = POST_URL_TEMPLATE.format(shortcode)
                 self._driver.driver.get(url)
-                record = json.loads(BeautifulSoup(self._driver.driver.page_source, 'html.parser').find('body').get_text())
+                record = json.loads(BeautifulSoup(self._driver.driver.page_source, 'html.parser')
+                                    .find('body').get_text())
                 record = pd.json_normalize(record)
                 record.rename(columns=COL_NAME_DICT, inplace=True)
                 record['hashtag'] = record['post_text'].apply(self._get_hashtags)
@@ -346,10 +368,12 @@ class MultiScraper(object):
                 continue
         return record_lst
 
-    def multiprocess_scraper(self, batch_size: int):
+    def scrape(self, batch_size: int = DEFAULT_BATCH_SIZE):
         """
-        :param batch_size:
-        :param cpu:
+        a method for scrapping instagram post pages given from a list of unscraped shortcodes in an SQL database.
+        this method will work in iterations, each time receiving a batch (with size given as a parameter by the user)
+        perform scraping, update the DB and commit
+        :param batch_size: int object that represents the size of each batch
         :return:
         """
         dbc = DBControl()
@@ -368,47 +392,53 @@ def arg_parser():
     parser.add_argument('tag', type=str, help='Choose a #hashtag')
     parser.add_argument('name', type=str, help='instagram user name')
     parser.add_argument('password', type=str, help='instagram user password')
-    parser.add_argument('-l', '--limit', type=int, default=np.inf, help='number of posts to scrape')
-    parser.add_argument('-b', '--browser', type=str, default='CHROME', help='browser choice to be used by selenium. '
-                                                                            'supported browsers:\t{}'
-                        .format('|'.join(Driver.WEBDRIVER_BROWSERS.keys())))
-    parser.add_argument('-e', '--executable', type=str, default=None, help='a path to the driver executable file. '
+    parser.add_argument('-l', '--limit', type=int, default=DEFAULT_LIMIT, help='number of posts/urls to scrape')
+    parser.add_argument('-b', '--browser', type=str, default=DEFAULT_BROWSER,
+                        help='browser choice to be used by selenium. supported browsers:\t{}'
+                        .format('|'.join(WEBDRIVER_BROWSERS.keys())))
+    parser.add_argument('-e', '--executable', type=str, default=DEFAULT_EXECUTABLE, help='a path to the driver '
+                                                                                         'executable file. '
                                                                            'If none is given it will be assumed that '
                                                                            'the driver was added and available as an '
                                                                            'OS environment variable')
-    parser.add_argument('-d', '--db_batch', type=int, default=50,
+    parser.add_argument('-d', '--db_batch', type=int, default=DEFAULT_BATCH_SIZE,
                         help='maximum number of records to insert and commit each time')
-    parser.add_argument('-fc', '--from_code', type=str, help='url shortcode to start scraping from')
-    parser.add_argument('-sc', '--stop_code', type=str, help='url shortcode that when reach will stop scrapping')
-    parser.add_argument('-i', '--implicit_wait', type=int, default=50, help='implicit wait time for '
+    parser.add_argument('-fc', '--from_code', type=str, help='url shortcode to start scraping from',
+                        default=DEFAULT_FROM_CODE)
+    parser.add_argument('-sc', '--stop_code', type=str, help='url shortcode that when reach will stop scrapping',
+                        default=DEFAULT_STOP_CODE)
+    parser.add_argument('-i', '--implicit_wait', type=int, default=DEFAULT_IMPLICIT_WAIT, help='implicit wait time for '
                                                                                        'webdriver')
     # test that validate that this value is a non negative int
-    parser.add_argument('-do', '--driver_options', type=str, default=[], help='ava script optional arguments that will '
-                                                                              'be injected to the browser argument '
-                                                                              'with selenium webdriver API',
+    parser.add_argument('-do', '--driver_options', type=str, default=DEFAULT_DRIVER_OPTIONS,
+                        help='java script optional arguments that will be injected to the browser argument'
+                             'with selenium webdriver API',
                         action='append')
-    parser.add_argument('-mn', '--min_scroll_wait', type=int, default=3,
+    parser.add_argument('-mn', '--min_scroll_wait', type=int, default=DEFAULT_MIN_WAIT_AFTER_SCROLL,
                         help='minimum number of seconds to wait after each scroll')
-    parser.add_argument('-mx', '--max_scroll_wait', type=int, default=5,
+    parser.add_argument('-mx', '--max_scroll_wait', type=int, default=DEFAULT_MAX_WAIT_AFTER_SCROLL,
                         help='maximum number of seconds to wait after each scroll')
+    parser.add_argument('-lg', '--log_file_path', type=str, help='path of logout file', default=DEFAULT_LOG_FILE_PATH)
+    parser.add_argument('-lf', '--log_file_format', type=str, default=DEFAULT_LOG_FILE_FORMAT)
 
     args = parser.parse_args()
 
     return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, args.from_code, \
-           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
+           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait, \
+           args.log_file_path, args.log_file_format
 
 
 def main():
-
+    # setting variables
     tag, name, password, limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, driver_options, \
-    min_scroll_wait, max_scroll_wait = arg_parser()
+    min_scroll_wait, max_scroll_wait, log_file_path, log_file_format = arg_parser()
+    # setting log file
+    logging.basicConfig(filename=log_file_path, format=log_file_format, level=logging.INFO)
+    # scraping urls and posts
     driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
     driver = Driver(*driver_set_up)
-    hashtag_page = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code,
-                               limit)
-    hashtag_page.shortcode_batch_generator()
-    post_scraper = MultiScraper(driver)
-    post_scraper.multiprocess_scraper(db_batch)
+    HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, limit).shortcode_batch_generator()
+    PostScraper(driver).scrape(db_batch)
     driver.driver.close()
 
 
