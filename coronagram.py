@@ -453,9 +453,9 @@ def arg_parser():
 
     args = parser.parse_args()
 
-    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, args.from_code, \
-           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait, \
-           args.log_file_path, args.log_file_format
+    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, \
+           args.from_code, args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, \
+           args.max_scroll_wait, args.log_file_path, args.log_file_format
 
 
 def main():
