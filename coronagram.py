@@ -457,14 +457,13 @@ def arg_parser():
     args = parser.parse_args()
 
     return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, args.from_code, \
-           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait, \
-           args.log_file_path, args.log_file_format
+           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
 
 
 def main():
     # setting variables
     tag, name, password, limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, driver_options, \
-    min_scroll_wait, max_scroll_wait, log_file_path, log_file_format = arg_parser()
+    min_scroll_wait, max_scroll_wait = arg_parser()
     # setting log file
     logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
     # scraping urls and posts

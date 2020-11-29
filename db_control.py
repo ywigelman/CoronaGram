@@ -58,7 +58,7 @@ class DBControl():
         """
         self.cursor.execute("SHOW TABLES")
 
-        tables = ['post_to_scrap', 'post_info', 'post_content', 'owner', 'location']
+        tables = ['post_to_scrap', 'owner', 'location', 'post_content', 'post_info']
         tables_to_create = []
         existent_tables = list(self.cursor)
         existent_tables = list(map(lambda x: x[0], existent_tables))
@@ -78,32 +78,7 @@ class DBControl():
                                  "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
                 logging.info('Table post_to_scrap created in DB')
 
-
-            if table == 'post_info':
-                self.cursor.execute("CREATE TABLE post_info "
-                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, id BIGINT, hashtags VARCHAR(500),"
-                                 "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
-                                 "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
-                                 "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
-                                 "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-                logging.info('Table post_info created in DB')
-
-
-            if table == 'post_content':
-                """
-                """
-                self.cursor.execute("CREATE TABLE post_content "
-                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, photo_url VARCHAR(1500),"
-                                 "ai_comment TEXT, post_text TEXT, comments TEXT, preview_comment TEXT,"
-                                 "location_name VARCHAR(100), multiple_photos TEXT,"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-                logging.info('Table post_content created in DB')
-
-
             if table == 'owner':
-                """
-                """
                 self.cursor.execute("CREATE TABLE owner "
                                  "(id BIGINT PRIMARY KEY NOT NULL, is_verified BOOL,"
                                  "profile_pic_url VARCHAR(2083), username VARCHAR(100),"
@@ -112,16 +87,34 @@ class DBControl():
                                  "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
                 logging.info('Table owner created in DB')
 
-
-
             if table == 'location':
-                """
-                """
                 self.cursor.execute("CREATE TABLE location "
                                  "(id BIGINT PRIMARY KEY NOT NULL, has_public_page BOOL,"
                                  "slug VARCHAR(150), json VARCHAR(1000),"
                                  "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
                 logging.info('Table location created in DB')
+
+            if table == 'post_info':
+                self.cursor.execute("CREATE TABLE post_info "
+                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, id BIGINT, hashtags VARCHAR(500),"
+                                 "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
+                                 "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
+                                 "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
+                                 "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
+                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
+                                    "CONSTRAINT FK_Shortcode1 FOREIGN KEY (shortcode) REFERENCES post_to_scrap(shortcode),"
+                                    "CONSTRAINT FK_owner FOREIGN KEY (owner_id) REFERENCES owner(id),"
+                                    "CONSTRAINT FK_location FOREIGN KEY (location_id) REFERENCES location(id),"
+                                    "CONSTRAINT FK_Shortcode2 FOREIGN KEY (shortcode) REFERENCES post_content(shortcode))")
+                logging.info('Table post_info created in DB')
+
+            if table == 'post_content':
+                self.cursor.execute("CREATE TABLE post_content "
+                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, photo_url VARCHAR(1500),"
+                                 "ai_comment TEXT, post_text TEXT, comments TEXT, preview_comment TEXT,"
+                                 "location_name VARCHAR(100), multiple_photos TEXT,"
+                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+                logging.info('Table post_content created in DB')
 
 
     def insert_shortcodes(self, shortcodes):
@@ -197,10 +190,10 @@ class DBControl():
         """
         this function distributes in all different tables of the DB the scrapping content
         """
-        self.insert_post_info(post_array)
         self.insert_post_content(post_array)
         self.insert_owner(post_array)
         self.insert_location(post_array)
+        self.insert_post_info(post_array)
         self.update_post_to_scrap(post_array)
 
 
@@ -250,7 +243,7 @@ class DBControl():
 
             post_columns_location = (location_id, has_public_page, slug, json_field)
             location_insert.append(deepcopy(post_columns_location))
-            logging.debug(f'Location data to insert in location table: {", ".join(list(post_columns_location))}')
+            logging.debug(f'Location data to insert in location table: {", ".join(list(map(lambda x: str(x), post_columns_location)))}')
             logging.debug(f'Location data to insert in location table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_location))))}')
 
         sql = f"INSERT INTO location (id, has_public_page, slug, json) " \
@@ -279,7 +272,7 @@ class DBControl():
             post_columns_owner = (owner_id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished, tiering_recommendation, media_count, followed_by_count)
             owner_insert.append(deepcopy(post_columns_owner))
 
-            logging.debug(f'Owner data to insert in owner table: {", ".join(list(post_columns_owner))}')
+            logging.debug(f'Owner data to insert in owner table: {", ".join(list(map(lambda x: str(x), post_columns_owner)))}')
             logging.debug(f'Owner data to insert in owner table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_owner))))}')
 
         sql = f"INSERT INTO owner (id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished, tiering_recommendation, media_count, followed_by_count) " \
@@ -329,7 +322,7 @@ class DBControl():
             post_columns_content = (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos)
             content_insert.append(deepcopy(post_columns_content))
 
-            logging.debug(f'Post content data to insert in post_content table: {", ".join(list(post_columns_content))}')
+            logging.debug(f'Post content data to insert in post_content table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
             logging.debug(f'Post content data to insert in post_content table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
 
         sql = f"INSERT INTO post_content (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos) " \
@@ -401,7 +394,7 @@ class DBControl():
                                            comment_count, preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration, product_type)
             posts_insert.append(deepcopy(post_columns_content))
 
-            logging.debug(f'Post info data to insert in post_info table: {", ".join(list(post_columns_content))}')
+            logging.debug(f'Post info data to insert in post_info table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
             logging.debug(f'Post info data to insert in post_info table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
 
         sql = f"INSERT INTO post_info (shortcode, id, hashtags, owner_id, location_id, type, dim_height, dim_width, is_video, comment_count, " \
