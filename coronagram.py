@@ -147,7 +147,7 @@ class Driver(object):
         source = BeautifulSoup(self.driver.page_source, 'html.parser')
         if source.find('p'):
             logging.info('log in: Failure')
-            self.driver.driver.close()
+            self.driver.close()
             sys.exit()
         else:
             logging.info('log in: Success')
