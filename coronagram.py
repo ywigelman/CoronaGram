@@ -191,7 +191,7 @@ class HashTagPage(object):
     def __init__(self, hashtag: str, driver: Driver,
                  max_scroll_wait: int = DEFAULT_MAX_WAIT_AFTER_SCROLL,
                  min_scroll_wait: int = DEFAULT_MIN_WAIT_AFTER_SCROLL, from_code: Union[str, None] = DEFAULT_FROM_CODE,
-                 stop_code: Union[str, None] = DEFAULT_STOP_CODE, limit=DEFAULT_LIMIT):
+                 stop_code: Union[str, None] = DEFAULT_STOP_CODE, limit=DEFAULT_URL_LIMIT):
         """
         HashTagPage is an object that represents a dynamic instagram hashtag page with infinite scrolls
         :param hashtag: str that represents the hashtag url page to open
@@ -394,7 +394,7 @@ class PostScraper(object):
                 logging.warning('failed scraping post - {}'.format(url))
         return record_lst
 
-    def scrape(self, batch_size: int = DEFAULT_BATCH_SIZE, max_post_to_scrape: int = DEFAULT_LIMIT):
+    def scrape(self, batch_size: int = DEFAULT_BATCH_SIZE, max_post_to_scrape: int = DEFAULT_URL_LIMIT):
         """
         a method for scrapping instagram post pages given from a list of unscraped shortcodes in an SQL database.
         this method will work in iterations, each time receiving a batch (with size given as a parameter by the user)
@@ -428,7 +428,8 @@ def arg_parser():
     parser.add_argument('tag', type=str, help='Choose a #hashtag')
     parser.add_argument('name', type=str, help='instagram user name')
     parser.add_argument('password', type=str, help='instagram user password')
-    parser.add_argument('-l', '--limit', type=int, default=DEFAULT_LIMIT, help='number of posts/urls to scrape')
+    parser.add_argument('-lu', '--url_limit', type=int, default=DEFAULT_URL_LIMIT, help='maximum urls to scrape')
+    parser.add_argument('-lp', '--post_limit', type=int, default=DEFAULT_POST_LIMIT, help='maximum posts to scrape')
     parser.add_argument('-b', '--browser', type=str, default=DEFAULT_BROWSER,
                         help='browser choice to be used by selenium. supported browsers:\t{}'
                         .format('|'.join(WEBDRIVER_BROWSERS.keys())))
@@ -456,23 +457,25 @@ def arg_parser():
 
     args = parser.parse_args()
 
-    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, args.from_code, \
-           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
+    return args.tag, args.name, args.password, args.url_limit, args.post_limit, args.browser, args.executable, \
+           args.db_batch, args.from_code, args.stop_code, args.implicit_wait, args.driver_options, \
+           args.min_scroll_wait, args.max_scroll_wait
 
 
 def main():
     # setting variables
-    tag, name, password, limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, driver_options, \
-    min_scroll_wait, max_scroll_wait = arg_parser()
+    tag, name, password, url_limit, post_limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, \
+    driver_options, min_scroll_wait, max_scroll_wait = arg_parser()
     # setting log file
     logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
     # scraping urls and posts
     driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
     driver = Driver(*driver_set_up)
     logging.info('driver object - set')
-    HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, limit).shortcode_batch_generator()
+    HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, url_limit).\
+        shortcode_batch_generator()
     logging.info('done short code scrapping step')
-    PostScraper(driver).scrape(db_batch, limit)
+    PostScraper(driver).scrape(db_batch, post_limit)
     driver.driver.close()
     logging.info('done post scraping step')
 
