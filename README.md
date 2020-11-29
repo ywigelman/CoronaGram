@@ -10,10 +10,11 @@ the program works in 2 steps:
 the separation into 2 steps allows a modular workflow by which the user can choose first how many urls to collect 
 before the scrapping of post begins
 
+<br><br>
 
-#### Instagram Scrapping - Graphical Abstract ####
+### Graphical Abstract
 
-![alt Graphical abstract - transparent](python scraping_transparent.png)
+![alt Graphical abstract - transparent](images/python_scraping_transparent.png)
 
 Usage
 =====
@@ -22,7 +23,7 @@ basic usage:
 ```
 python coronagram.py corna misterLovaLova 12345678 
 ```
-#####Positional arguments:
+#### Positional arguments:
 
 |          | Description                          |
 |----------|--------------------------------------|
@@ -31,7 +32,7 @@ python coronagram.py corna misterLovaLova 12345678
 | password | Instagram password                   |
 
 
-#####Optional arguments:
+#### Optional arguments:
 
 | Short | Long              | Description                                                                                 | Default             | comments                                                                                                  |
 |-------|-------------------|---------------------------------------------------------------------------------------------|---------------------|-----------------------------------------------------------------------------------------------------------|
@@ -48,12 +49,12 @@ python coronagram.py corna misterLovaLova 12345678
 | -mn   | --min_scroll_wait | minimum number of seconds to wait after each scroll                                         |                     |                                                                                                           |
 | -mx   | --max_scroll_wait | maximum number of seconds to wait after each scroll                                         |                     |                                                                                                           |
 
-#DataBase ERD
+### DataBase ERD
 
-![ERD](instascrap ERD.png)
+![ERD](images/instascrapERD.png)
 
 
-# Notes
+### Notes
 
 this program used selenium library for scrolling on page due to the dynemic properties of instagram hashtag pages. 
 Selenium headless option permits to limit usage of graphical resources.
@@ -62,7 +63,7 @@ the computer (Chrome or Firefox). In case any browser is defined as default brow
 you have to define a path to it. If it is set, the driver will use the one defined in
 OS environment variable
 
-# Dependencies
+### Dependencies
 ```
 beautifulsoup4==4.9.3
 bs4==0.0.1
