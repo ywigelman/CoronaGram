@@ -121,6 +121,7 @@ class DBControl():
         """
         insert in table post_to_scrap shortcodes that are scrapped in hashtag page
         """
+        if len(shortcodes) == 0: return
         if type(shortcodes[0]) is str:
             shortcodes = list(map(lambda x: (x,), shortcodes))
         sql = "INSERT IGNORE INTO post_to_scrap (shortcode) VALUES (%s)"
@@ -181,7 +182,7 @@ class DBControl():
         shortcodes = list(self.cursor)
 
         sql = "UPDATE post_to_scrap SET in_process = 0 WHERE shortcode=%s"
-        self.cursor.executemany(sql, shortcodes)
+        self.cursor.executemany(sql, list(map(lambda x: (x,), shortcodes)))
         self.mydb.commit()
         logging.debug(f'Shortcodes list sanity updated in post_to_scrap: {", ".join(shortcodes)}')
 

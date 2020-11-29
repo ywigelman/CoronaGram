@@ -92,7 +92,7 @@ SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for ge
 DEFAULT_BATCH_SIZE = 50
 DEFAULT_POST_LIMIT = np.inf
 
-POST_LENGTH_TO_COMMIT = 2
+POST_LENGTH_TO_COMMIT = 10
 
 DB_NAME = 'itc1'
 DB_HOST_NAME = "localhost"
