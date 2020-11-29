@@ -414,6 +414,7 @@ class PostScraper(object):
                 batch = batch[:(len(batch) + self.posts_scraped) - max_post_to_scrape]
             records += self._post_scraping(batch)
             if len(records) >= POST_LENGTH_TO_COMMIT:
+                self.posts_scraped += len(records)
                 dbc.insert_posts(records)
                 records = []
 
