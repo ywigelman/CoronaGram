@@ -93,6 +93,8 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
+        self._options.add_experimental_option("prefs", {"intl.accept_languages": "en-EN"})
+        # options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
             try:
@@ -402,18 +404,22 @@ class PostScraper(object):
         :return:
         """
         dbc = DBControl()
+        records = []
         logging.info('connection to SQL server for post scraping and update step - successful')
         logging.info('set limit value for post scrapping: {}'.format(max_post_to_scrape))
         while True:
             batch = dbc.shortcodes_list_for_scraping(batch_size)
             if any([not batch, self.posts_scraped >= max_post_to_scrape]):
+                dbc.check_post_to_scrap_sanity()
                 return
             if (len(batch) + self.posts_scraped) > max_post_to_scrape:
                 batch = batch[:(len(batch) + self.posts_scraped) - max_post_to_scrape]
-            records = self._post_scraping(batch)
-            self.posts_scraped += len(records)
-            # todo Yair - add insert and commit job to records
+            records += self._post_scraping(batch)
+            if len(records) >= POST_LENGTH_TO_COMMIT:
+                dbc.insert_posts(records)
+                records = []
             # todo Yair - optional - add login message if insert commit was successful
+
 
 
 def arg_parser():
@@ -442,28 +448,24 @@ def arg_parser():
     # test that validate that this value is a non negative int
     parser.add_argument('-o', '--driver_options', type=str, default=DEFAULT_DRIVER_OPTIONS,
                         help='java script optional arguments that will be injected to the browser argument'
-                             'with selenium webdriver API',
-                        action='append')
+                             'with selenium webdriver API', action='append')
     parser.add_argument('-mn', '--min_scroll_wait', type=int, default=DEFAULT_MIN_WAIT_AFTER_SCROLL,
                         help='minimum number of seconds to wait after each scroll')
     parser.add_argument('-mx', '--max_scroll_wait', type=int, default=DEFAULT_MAX_WAIT_AFTER_SCROLL,
                         help='maximum number of seconds to wait after each scroll')
-    parser.add_argument('-lg', '--log_file_path', type=str, help='path of logout file', default=DEFAULT_LOG_FILE_PATH)
-    parser.add_argument('-lf', '--log_file_format', type=str, default=DEFAULT_LOG_FILE_FORMAT)
 
     args = parser.parse_args()
 
-    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, \
-           args.from_code, args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, \
-           args.max_scroll_wait, args.log_file_path, args.log_file_format
+    return args.tag, args.name, args.password, args.limit, args.browser, args.executable, args.db_batch, args.from_code, \
+           args.stop_code, args.implicit_wait, args.driver_options, args.min_scroll_wait, args.max_scroll_wait
 
 
 def main():
     # setting variables
     tag, name, password, limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, driver_options, \
-    min_scroll_wait, max_scroll_wait, log_file_path, log_file_format = arg_parser()
+    min_scroll_wait, max_scroll_wait = arg_parser()
     # setting log file
-    logging.basicConfig(filename=log_file_path, format=log_file_format, level=logging.INFO)
+    logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
     # scraping urls and posts
     driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
     driver = Driver(*driver_set_up)

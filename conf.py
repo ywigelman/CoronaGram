@@ -91,4 +91,8 @@ SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for ge
 # constants with default values for instanting PostScraper object
 DEFAULT_BATCH_SIZE = 50
 
+POST_LENGTH_TO_COMMIT = 2
 
+DB_NAME = 'itc1'
+DB_HOST_NAME = "localhost"
+DB_USER_NAME = "root"

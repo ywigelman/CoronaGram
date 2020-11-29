@@ -1,6 +1,8 @@
 # CoronaGram
 Data Mining Project as part of an ITC Data Science course 
 
+![ERD](instascrap ERD.png)
+
 Our program scrap instagram page of a specific hashtag and
 take all post link related to this hashtag.
 After that it scraps each post page and print the result
