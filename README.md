@@ -48,6 +48,9 @@ python coronagram.py corna misterLovaLova 12345678
 | -o    | --driver_options  | java script optional arguments that will be injected to browser with selenium webdriver API | \['--headless']     | can be chosen multiple times                                                                              |
 | -mn   | --min_scroll_wait | minimum number of seconds to wait after each scroll                                         |                     |                                                                                                           |
 | -mx   | --max_scroll_wait | maximum number of seconds to wait after each scroll                                         |                     |                                                                                                           |
+| -hd   | --headed_mode     | running in headed mode (graphical browser)                                                  | False               |                                                                                                           |
+
+headed_mode
 
 ### DataBase ERD
 

@@ -94,9 +94,7 @@ class Driver(object):
         """
         self._options = self._options()
         self._options.add_experimental_option("prefs", {"intl.accept_languages": "en-EN"})
-        # options.append(HEADLESS_MODE)  # adding headless mode as default
-        for option in set(options):
-            # using "set" in case the same option was added more than once
+        for option in set(options): # using "set" in case the same option was added more than once
             try:
                 self._options.add_argument(option)
             except ValueError:
@@ -418,8 +416,6 @@ class PostScraper(object):
             if len(records) >= POST_LENGTH_TO_COMMIT:
                 dbc.insert_posts(records)
                 records = []
-            # todo Yair - optional - add login message if insert commit was successful
-
 
 
 def arg_parser():
@@ -454,8 +450,11 @@ def arg_parser():
                         help='minimum number of seconds to wait after each scroll')
     parser.add_argument('-mx', '--max_scroll_wait', type=int, default=DEFAULT_MAX_WAIT_AFTER_SCROLL,
                         help='maximum number of seconds to wait after each scroll')
+    parser.add_argument('-hd', '--headed_mode', help='running in headed mode (graphical browser)', action='store_true')
 
     args = parser.parse_args()
+    if not args.headed_mode:
+        args.driver_options.append(HEADLESS_MODE)
 
     return args.tag, args.name, args.password, args.url_limit, args.post_limit, args.browser, args.executable, \
            args.db_batch, args.from_code, args.stop_code, args.implicit_wait, args.driver_options, \

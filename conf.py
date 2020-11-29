@@ -71,7 +71,7 @@ WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: wd.Chrome,
                       'FIREFOX': {DRIVER_KEY: wd.Firefox,
                                   OPTIONS_KEY: wd.FirefoxOptions}}
 HEADLESS_MODE = '--headless'  # command for running in headless mode
-DEFAULT_DRIVER_OPTIONS = [HEADLESS_MODE]
+DEFAULT_DRIVER_OPTIONS = []
 NONE_OPTION_VALUE = 'note that you have chosen None as an option for your browser. this request will be ignored'
 IMPLICIT_WAIT_NOT_INT = 'Implicit wait must be an integer'
 IMPLICIT_WAIT_NOT_NEG = 'Implicit can not hold negative values'
