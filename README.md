@@ -21,7 +21,7 @@ Usage
 
 basic usage:
 ```
-python coronagram.py corna misterLovaLova 12345678 
+python coronagram.py corona misterLovaLova 12345678 
 ```
 #### Positional arguments:
 
@@ -56,7 +56,7 @@ python coronagram.py corna misterLovaLova 12345678
 
 ### Notes
 
-this program used selenium library for scrolling on page due to the dynemic properties of instagram hashtag pages. 
+This program used selenium library for scrolling on page due to the dynamic properties of instagram hashtag pages. 
 Selenium headless option permits to limit usage of graphical resources.
 Selenium library permits to work with the browser installed on
 the computer (Chrome or Firefox). In case any browser is defined as default browser,
