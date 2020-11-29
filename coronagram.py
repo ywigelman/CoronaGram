@@ -94,7 +94,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        options.append('--lang = en - US')
+        self._options.add_experimental_option("prefs", {"intl.accept_languages": "en-EN"})
         # options.append(HEADLESS_MODE)  # adding headless mode as default
         for option in set(options):
             # using "set" in case the same option was added more than once
@@ -341,7 +341,7 @@ class MultiScraper(object):
                 record = json.loads(BeautifulSoup(self._driver.driver.page_source, 'html.parser').find('body').get_text())
                 record = pd.json_normalize(record)
                 record.rename(columns=COL_NAME_DICT, inplace=True)
-                record['hashtag'] = record['post_text'].apply(self._get_hashtags)
+                record['hashtags'] = record['post_text'].apply(self._get_hashtags)
                 record_lst.append(record)
             except (KeyError, JSONDecodeError):
                 continue
@@ -358,11 +358,13 @@ class MultiScraper(object):
         while True:
             batch = dbc.shortcodes_list_for_scraping(batch_size)
             if not batch:
+                dbc.check_post_to_scrap_sanity()
                 return
             records += self._post_scraping(batch)
             if len(records) >= POST_LENGTH_TO_COMMIT:
                 dbc.insert_posts(records)
                 records = []
+
 
 
 def arg_parser():
