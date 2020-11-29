@@ -1,5 +1,16 @@
 import numpy as np
+from selenium.webdriver.chrome.options import Options
+import selenium.webdriver as wd
 
+#     Please Note - in order to put ALL constants, magic numbers, dictionaries, and magic strings in a configuration
+#     file as requested in the redo - we had to import packages to this file since since some of those constants are
+#     dictionary with selenium commands or values like np.inf
+
+# constants for log file
+DEFAULT_LOG_FILE_PATH = 'coronagram.log'
+DEFAULT_LOG_FILE_FORMAT = '%(asctime)s-%(levelname)s-FILE:%(filename)s-FUNC:%(funcName)s-LINE:%(lineno)d-%(message)s'
+
+# dictionary for rename post scraped elements
 COL_NAME_DICT = {'graphql.shortcode_media.__typename': 'type',
                  'graphql.shortcode_media.id': 'id',
                  'graphql.shortcode_media.shortcode': 'shortcode',
@@ -37,32 +48,52 @@ COL_NAME_DICT = {'graphql.shortcode_media.__typename': 'type',
                  'graphql.shortcode_media.video_duration': 'video_duration',
                  'graphql.shortcode_media.product_type': 'product_type'}
 
+# constants with information on instagram, log in, hashtag and posts pages formats
 WEBSITE_URL = 'https://www.instagram.com/'
 ACCOUNT_LOG_IN = WEBSITE_URL + 'accounts/login/'
 HASHTAG_URL_TEMPLATE = WEBSITE_URL + 'explore/tags/{}/?h__a=1'
+POST_URL_TEMPLATE = WEBSITE_URL + 'p/{}/?__a=1'
 
+# constants of commands for logging in instagram page including wait time for response before continuing
 INSTAGRAM_USER_NAME_TAG = "//input[@name=\"username\"]"
 INSTAGRAM_PASSWORD_TAG = "//input[@name=\"password\"]"
 INSTAGRAM_SUBMIT_TAG = "//button[@type=\"submit\"]"
 INSTAGRAM_NOT_NOW_BUTTON = "//button[text()='Not Now']"
 LOGIN_PAGE_WAIT = 3
 
+# constants with default values for instanting DRIVER object
+DEFAULT_IMPLICIT_WAIT = 50
+DEFAULT_BROWSER = 'CHROME'
+DEFAULT_EXECUTABLE = None
+DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
+WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: wd.Chrome,
+                                 OPTIONS_KEY: wd.chrome.options.Options},
+                      'FIREFOX': {DRIVER_KEY: wd.Firefox,
+                                  OPTIONS_KEY: wd.FirefoxOptions}}
+HEADLESS_MODE = '--headless'  # command for running in headless mode
+DEFAULT_DRIVER_OPTIONS = [HEADLESS_MODE]
+NONE_OPTION_VALUE = 'note that you have chosen None as an option for your browser. this request will be ignored'
+IMPLICIT_WAIT_NOT_INT = 'Implicit wait must be an integer'
+IMPLICIT_WAIT_NOT_NEG = 'Implicit can not hold negative values'
+
+# constants with default values for instanting HashTagPage object
+END_OF_SHORT_CODE_SCAPE_MSG = 'shortcode scraping is done - either you scraped everything, reached your limit or ' \
+                              'something went wrong. (lets hope it\'s the first one)'
 STEP_SIZE = 0.1
 DEFAULT_MAX_WAIT_AFTER_SCROLL = 3
 DEFAULT_MIN_WAIT_AFTER_SCROLL = 1
-DEFAULT_LIMIT = np.inf
+DEFAULT_URL_LIMIT = np.inf
 DEFAULT_FROM_CODE = None
 DEFAULT_STOP_CODE = None
-
 SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'  # java scrip command for scrolling to page bottom
 SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for getting scroll height
-POST_KEY_WORD = 'window._sharedData = '
-HEADLESS_MODE = '--headless'  # command for running in headless mode
 
-DEFAULT_IMPLICIT_WAIT = 5
-DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
-
-END_OF_SHORT_CODE_SCAPE_MSG = 'scraping is done - either you scraped everything, reached your limit or something ' \
-                              'went wrong.\n(lets hope it\'s the first one)'
+# constants with default values for instanting PostScraper object
+DEFAULT_BATCH_SIZE = 50
+DEFAULT_POST_LIMIT = np.inf
 
 POST_LENGTH_TO_COMMIT = 2
+
+DB_NAME = 'itc1'
+DB_HOST_NAME = "localhost"
+DB_USER_NAME = "root"
