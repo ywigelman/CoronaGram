@@ -71,7 +71,7 @@ WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: wd.Chrome,
                       'FIREFOX': {DRIVER_KEY: wd.Firefox,
                                   OPTIONS_KEY: wd.FirefoxOptions}}
 HEADLESS_MODE = '--headless'  # command for running in headless mode
-DEFAULT_DRIVER_OPTIONS = []
+DEFAULT_DRIVER_OPTIONS = [HEADLESS_MODE]
 NONE_OPTION_VALUE = 'note that you have chosen None as an option for your browser. this request will be ignored'
 IMPLICIT_WAIT_NOT_INT = 'Implicit wait must be an integer'
 IMPLICIT_WAIT_NOT_NEG = 'Implicit can not hold negative values'
@@ -82,7 +82,7 @@ END_OF_SHORT_CODE_SCAPE_MSG = 'shortcode scraping is done - either you scraped e
 STEP_SIZE = 0.1
 DEFAULT_MAX_WAIT_AFTER_SCROLL = 3
 DEFAULT_MIN_WAIT_AFTER_SCROLL = 1
-DEFAULT_LIMIT = np.inf
+DEFAULT_URL_LIMIT = np.inf
 DEFAULT_FROM_CODE = None
 DEFAULT_STOP_CODE = None
 SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'  # java scrip command for scrolling to page bottom
@@ -90,6 +90,7 @@ SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for ge
 
 # constants with default values for instanting PostScraper object
 DEFAULT_BATCH_SIZE = 50
+DEFAULT_POST_LIMIT = np.inf
 
 POST_LENGTH_TO_COMMIT = 2
 
