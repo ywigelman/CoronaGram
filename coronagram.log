@@ -1,1 +1,57 @@
-2020-11-28 19:11:07,729-INFO-FILE:coronagram.py-FUNC:login-LINE:145-log in: Success
+2020-11-29 00:38:05,384-INFO-FILE:coronagram.py-FUNC:_browser_dict-LINE:74-selected browser: CHROME
+2020-11-29 00:38:05,385-INFO-FILE:coronagram.py-FUNC:_set_options-LINE:103-browser options set successfully
+2020-11-29 00:38:05,385-INFO-FILE:coronagram.py-FUNC:_validate_implicit_wait-LINE:84-implicit_wait value: 50
+2020-11-29 00:38:06,814-INFO-FILE:coronagram.py-FUNC:_set_driver-LINE:118-successfully setting driver object
+2020-11-29 00:38:06,816-INFO-FILE:coronagram.py-FUNC:main-LINE:470-driver object - set
+2020-11-29 00:38:06,817-INFO-FILE:coronagram.py-FUNC:_set_scroll_pause_range-LINE:232-set random wait range with minimum value of 1, maximum value of 3 and step size of 0.1
+2020-11-29 00:38:06,817-INFO-FILE:coronagram.py-FUNC:_validate_limit-LINE:246-set limit value for url scrapping: 100
+2020-11-29 00:38:06,835-INFO-FILE:coronagram.py-FUNC:__init__-LINE:216-connection to SQL server for shortcode scraping - successful
+2020-11-29 00:38:14,586-INFO-FILE:coronagram.py-FUNC:login-LINE:153-log in: Success
+2020-11-29 00:38:19,115-INFO-FILE:coronagram.py-FUNC:not_now-LINE:165-avoided save contact info message
+2020-11-29 00:38:22,242-INFO-FILE:coronagram.py-FUNC:not_now-LINE:168-avoided Turn on Notifications message
+2020-11-29 00:38:25,177-INFO-FILE:coronagram.py-FUNC:open-LINE:184-successfully opened https://www.instagram.com/explore/tags/corona/?h__a=1 url page
+2020-11-29 00:38:34,554-INFO-FILE:coronagram.py-FUNC:shortcode_batch_generator-LINE:288-url scraping is done - either you scraped everything, reached your limit or something went wrong. (lets hope it's the first one)
+2020-11-29 00:38:34,556-INFO-FILE:coronagram.py-FUNC:main-LINE:472-done short code scrapping
+2020-11-29 00:38:34,578-INFO-FILE:coronagram.py-FUNC:scrape-LINE:405-connection to SQL server for post scraping and update step - successful
+2020-11-29 00:38:34,578-INFO-FILE:coronagram.py-FUNC:scrape-LINE:406-set limit value for post scrapping: 100
+2020-11-29 00:38:35,014-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr_wyjy1p/?__a=1
+2020-11-29 00:38:35,454-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr61MBoY5/?__a=1
+2020-11-29 00:38:35,796-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr7KZlpdO/?__a=1
+2020-11-29 00:38:36,267-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr8Q4DgD3/?__a=1
+2020-11-29 00:38:36,655-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr9abheoQ/?__a=1
+2020-11-29 00:38:37,253-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr9FPMFke/?__a=1
+2020-11-29 00:38:37,837-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr9qYlAb4/?__a=1
+2020-11-29 00:38:38,460-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJr9SsDV3-/?__a=1
+2020-11-29 00:38:38,902-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJrkqIo5hv/?__a=1
+2020-11-29 00:38:39,426-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsA9wgQOH/?__a=1
+2020-11-29 00:38:39,977-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsAKYl51I/?__a=1
+2020-11-29 00:38:40,400-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsB2tFzHg/?__a=1
+2020-11-29 00:38:40,784-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsCwkA1qn/?__a=1
+2020-11-29 00:38:41,208-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsDVFHOpx/?__a=1
+2020-11-29 00:38:41,674-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsDyBhiTc/?__a=1
+2020-11-29 00:38:42,128-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsEPUp70I/?__a=1
+2020-11-29 00:38:42,511-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsFpbAarC/?__a=1
+2020-11-29 00:38:42,931-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsFZtHu9F/?__a=1
+2020-11-29 00:38:43,447-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsHd_JOnL/?__a=1
+2020-11-29 00:38:43,808-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsHEgHxYJ/?__a=1
+2020-11-29 00:38:44,317-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsHXrJVek/?__a=1
+2020-11-29 00:38:44,739-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsJeJFqNQ/?__a=1
+2020-11-29 00:38:45,226-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsKl2jCdY/?__a=1
+2020-11-29 00:38:45,668-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsL9dAyVz/?__a=1
+2020-11-29 00:38:46,058-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsLFhH0es/?__a=1
+2020-11-29 00:38:46,410-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsNTDlSzP/?__a=1
+2020-11-29 00:38:46,809-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsOPqD2uE/?__a=1
+2020-11-29 00:38:47,313-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsS0ohxsP/?__a=1
+2020-11-29 00:38:47,753-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsSJksQvp/?__a=1
+2020-11-29 00:38:48,189-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsSXzlagO/?__a=1
+2020-11-29 00:38:48,591-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsT4CpZqm/?__a=1
+2020-11-29 00:38:49,064-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsTK-gQ9V/?__a=1
+2020-11-29 00:38:49,779-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsU6cJfoI/?__a=1
+2020-11-29 00:38:50,356-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsV3AlbIp/?__a=1
+2020-11-29 00:38:50,805-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsVnaB2yC/?__a=1
+2020-11-29 00:38:51,392-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsWDVFrY9/?__a=1
+2020-11-29 00:38:51,864-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsXMMJZ3a/?__a=1
+2020-11-29 00:38:52,504-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsXNZh3Zi/?__a=1
+2020-11-29 00:38:52,876-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsYYCFP1L/?__a=1
+2020-11-29 00:38:53,229-INFO-FILE:coronagram.py-FUNC:_post_scraping-LINE:390-successfully scraped post - https://www.instagram.com/p/CIJsZipBF5k/?__a=1
+2020-11-29 00:38:53,284-INFO-FILE:coronagram.py-FUNC:main-LINE:475-finished post scraping
