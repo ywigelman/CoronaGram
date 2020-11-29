@@ -418,8 +418,6 @@ class PostScraper(object):
             if len(records) >= POST_LENGTH_TO_COMMIT:
                 dbc.insert_posts(records)
                 records = []
-            # todo Yair - optional - add login message if insert commit was successful
-
 
 
 def arg_parser():
