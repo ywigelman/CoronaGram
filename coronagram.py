@@ -408,12 +408,14 @@ class PostScraper(object):
         while True:
             batch = dbc.shortcodes_list_for_scraping(batch_size)
             if any([not batch, self.posts_scraped >= max_post_to_scrape]):
+                dbc.check_post_to_scrap_sanity()
                 return
             post_len2add = len(batch) + self.posts_scraped
             if post_len2add > max_post_to_scrape:
                 delta = post_len2add - max_post_to_scrape
                 batch, return_batch = batch[:delta], batch[delta:]
-                dbc.unconfirm_end_scraping_for_shortcodes(return_batch)
+                if len(return_batch) > 0:
+                    dbc.unconfirm_end_scraping_for_shortcodes(return_batch)
             records += self._post_scraping(batch)
             self.posts_scraped += len(batch)
             if len(records) >= POST_LENGTH_TO_COMMIT:

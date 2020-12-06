@@ -182,9 +182,9 @@ class DBControl():
         shortcodes = list(self.cursor)
 
         sql = "UPDATE post_to_scrap SET in_process = 0 WHERE shortcode=%s"
-        self.cursor.executemany(sql, list(map(lambda x: (x,), shortcodes)))
+        self.cursor.executemany(sql, shortcodes)
         self.mydb.commit()
-        logging.debug(f'Shortcodes list sanity updated in post_to_scrap: {", ".join(shortcodes)}')
+        logging.debug(f'Shortcodes list sanity updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
 
 
     def insert_posts(self, post_array):
