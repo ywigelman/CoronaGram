@@ -15,6 +15,7 @@ import sys
 from json.decoder import JSONDecodeError
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import WebDriverException
+from sentiment import PostText
 
 
 class ClassAttributeError(Exception):
@@ -456,6 +457,8 @@ def arg_parser():
     parser.add_argument('-mx', '--max_scroll_wait', type=int, default=DEFAULT_MAX_WAIT_AFTER_SCROLL,
                         help='maximum number of seconds to wait after each scroll')
     parser.add_argument('-hd', '--headed_mode', help='running in headed mode (graphical browser)', action='store_true')
+    parser.add_argument('-en', '--enrich', help='maximum number of API enrichment operations', type=int,
+                        default=MAX_ENRICH)
 
     args = parser.parse_args()
     if not args.headed_mode:
