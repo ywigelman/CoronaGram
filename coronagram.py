@@ -432,13 +432,13 @@ def arg_parser():
 
     return args.tag, args.name, args.password, args.url_limit, args.post_limit, args.browser, args.executable, \
            args.db_batch, args.from_code, args.stop_code, args.implicit_wait, args.driver_options, \
-           args.min_scroll_wait, args.max_scroll_wait
+           args.min_scroll_wait, args.max_scroll_wait, args.enrich
 
 
 def main():
     # setting variables
     tag, name, password, url_limit, post_limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, \
-    driver_options, min_scroll_wait, max_scroll_wait = arg_parser()
+    driver_options, min_scroll_wait, max_scroll_wait, enrich = arg_parser()
     # setting log file
     logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
     # scraping urls and posts
@@ -476,9 +476,24 @@ def main():
         if len(records) >= POST_LENGTH_TO_COMMIT:
             dbc.insert_posts(records)
             records = []
-
     driver.driver.close()
     logging.info('done post scraping step')
+
+    #####################################
+
+    # 1)  use the enrich (int) variable to get post_text using dbc instance
+    # 2) iterate over the post_text lst
+    # 3) in each iteration create a instance of PostText with the post_text item (pt=PostText(<post_text>))
+    # 4) use the analyze_sentiment method of the PostText instance (pt.analyze_sentiment())
+    # 5) get language, translation and sentiment as pt methods and update in the DB:
+
+            # pt.language
+            # pt.translation
+            # pt.sentiment
+
+    # Good Night!
+
+    #####################################
 
 
 if __name__ == '__main__':
