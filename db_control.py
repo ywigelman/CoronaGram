@@ -121,6 +121,7 @@ class DBControl():
                             "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
                             "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
                             "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
+                            "post_language VARCHAR(30), post_sentiment VARCHAR(30),"
                             "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
                             "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
                             "CONSTRAINT FK_Shortcode1 FOREIGN KEY (shortcode) REFERENCES post_to_scrap(shortcode),"
@@ -135,8 +136,8 @@ class DBControl():
         """
         self.cursor.execute("CREATE TABLE post_content "
                             "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, photo_url VARCHAR(1500),"
-                            "ai_comment TEXT, post_text TEXT, comments TEXT, preview_comment TEXT,"
-                            "location_name VARCHAR(100), multiple_photos TEXT,"
+                            "ai_comment TEXT, post_text TEXT, post_translation_text TEXT, comments TEXT,"
+                            "preview_comment TEXT, location_name VARCHAR(100), multiple_photos TEXT,"
                             "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
         logging.info('Table post_content created in DB')
 
@@ -209,6 +210,23 @@ class DBControl():
         self.cursor.executemany(sql, shortcodes)
         self.mydb.commit()
         logging.debug(f'Shortcodes list sanity updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
+
+
+    def select_post_to_translate(self, number=1):
+        """
+        check on post_info for shortcodes that were not translated yet, in post_language column
+        """
+        self.cursor.execute(f"SELECT shortcode FROM post_info WHERE post_language = NULL LIMIT {number}")
+        shortcodes = list(self.cursor)
+        return list(map(lambda x: x[0], shortcodes))
+
+
+    def insert_translation_to_post(self, shortcode, translation):
+        sql = "UPDATE post_content SET post_translation_text=%s WHERE shortcode=%s"
+        self.cursor.execute(sql, (shortcode, translation))
+        #self.mydb.commit()
+        #logging.debug(f'Insert to shortcode {shortcode} translation: {translation}')
+
 
 
     def insert_posts(self, post_array):
