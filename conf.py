@@ -97,3 +97,16 @@ POST_LENGTH_TO_COMMIT = 10
 DB_NAME = 'itc1'
 DB_HOST_NAME = "localhost"
 DB_USER_NAME = "root"
+
+# POST_TEXT constants
+CONTENT_TYPE = 'application/x-www-form-urlencoded'
+ACCEPT_ENCODING = 'application/gzip'
+X_RAPID_API_KEY = 'dc8d389c8emsh7b62cf28feb4648p1285cdjsn788a129fffc5'
+X_RAPID_API_HOST = 'google-translate1.p.rapidapi.com'
+URL_LANGUAGE = 'https://google-translate1.p.rapidapi.com/language/translate/v2/detect'
+URL_TRANSLATION = 'https://google-translate1.p.rapidapi.com/language/translate/v2'
+TARGET_LANG = 'en'
+
+
+SENTIMENT_SUBSCRIPTION_KEY = "d2d3dc2b2fc94b64982dc912169f0a85"
+URL_SENTIMENT = 'https://textanalyticsitc.cognitiveservices.azure.com//text/analytics/v3.0/sentiment'
