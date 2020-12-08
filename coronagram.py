@@ -15,7 +15,6 @@ import sys
 from json.decoder import JSONDecodeError
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import WebDriverException
-from sentiment import PostText
 
 
 class ClassAttributeError(Exception):
@@ -213,7 +212,6 @@ class HashTagPage(object):
         self._stop_scrapping = False  # a flag that indicates if scrolling reached bottom of the web page
         self._break = False  # a flag that indicates stop automated scrolling and start collecting
         # (only relevant if from_code was provided)
-        self._dbc = DBControl()
         logging.info('connection to SQL server for shortcode scraping - successful')
 
     def _set_scroll_pause_range(self, minimum: int, maximum: int) -> np.ndarray:
@@ -289,7 +287,7 @@ class HashTagPage(object):
                 logging.info(END_OF_SHORT_CODE_SCAPE_MSG)
                 return
             self._shortcode_page_scraper()
-            self._dbc.insert_shortcodes(self._shortcode_batch)
+            yield self._shortcode_batch
             self._shortcode_batch = []
             self._scroll()
 
@@ -352,7 +350,7 @@ class PostScraper(object):
 
     def __init__(self, driver: Driver):
         """
-        PostScraper is an object made for scarping instagram pages and insert the results into an SQL database
+        PostScraper is an object made for scarping instagram pages
         :param driver: Driver object with predefine options able to connect to post pages
         """
         self._driver = driver
@@ -365,13 +363,13 @@ class PostScraper(object):
     def _get_hashtags(text):
         """
         a static method for extracting hash tags from post
-        :param text: an object representing a text containing hashtag to exctract
+        :param text: an object representing a text containing hashtag to extract
         :return: list of hashtags
         """
         p = re.compile(r'#(\w*)')
         return p.findall(str(text))
 
-    def _post_scraping(self, shortcode_lst: list) -> list:
+    def post_scraping(self, shortcode_lst: list) -> list:
         """
         a method for scraping post information from a list of shortcodes
         :param shortcode_lst: a list object that contain post short codes for scrapping
@@ -392,36 +390,6 @@ class PostScraper(object):
             except (KeyError, JSONDecodeError):
                 logging.warning('failed scraping post - {}'.format(url))
         return record_lst
-
-    def scrape(self, batch_size: int = DEFAULT_BATCH_SIZE, max_post_to_scrape: int = DEFAULT_URL_LIMIT):
-        """
-        a method for scrapping instagram post pages given from a list of unscraped shortcodes in an SQL database.
-        this method will work in iterations, each time receiving a batch (with size given as a parameter by the user)
-        perform scraping, update the DB and commit
-        :param batch_size: int object that represents the size of each batch
-        :param max_post_to_scrape: int object that represents an upper limit for the number of posts to scrape
-        :return:
-        """
-        dbc = DBControl()
-        records = []
-        logging.info('connection to SQL server for post scraping and update step - successful')
-        logging.info('set limit value for post scrapping: {}'.format(max_post_to_scrape))
-        while True:
-            batch = dbc.shortcodes_list_for_scraping(batch_size)
-            if any([not batch, self.posts_scraped >= max_post_to_scrape]):
-                dbc.check_post_to_scrap_sanity()
-                return
-            post_len2add = len(batch) + self.posts_scraped
-            if post_len2add > max_post_to_scrape:
-                delta = post_len2add - max_post_to_scrape
-                batch, return_batch = batch[:delta], batch[delta:]
-                if len(return_batch) > 0:
-                    dbc.unconfirm_end_scraping_for_shortcodes(return_batch)
-            records += self._post_scraping(batch)
-            self.posts_scraped += len(batch)
-            if len(records) >= POST_LENGTH_TO_COMMIT:
-                dbc.insert_posts(records)
-                records = []
 
 
 def arg_parser():
@@ -457,8 +425,6 @@ def arg_parser():
     parser.add_argument('-mx', '--max_scroll_wait', type=int, default=DEFAULT_MAX_WAIT_AFTER_SCROLL,
                         help='maximum number of seconds to wait after each scroll')
     parser.add_argument('-hd', '--headed_mode', help='running in headed mode (graphical browser)', action='store_true')
-    parser.add_argument('-en', '--enrich', help='maximum number of API enrichment operations', type=int,
-                        default=MAX_ENRICH)
 
     args = parser.parse_args()
     if not args.headed_mode:
@@ -466,25 +432,68 @@ def arg_parser():
 
     return args.tag, args.name, args.password, args.url_limit, args.post_limit, args.browser, args.executable, \
            args.db_batch, args.from_code, args.stop_code, args.implicit_wait, args.driver_options, \
-           args.min_scroll_wait, args.max_scroll_wait
+           args.min_scroll_wait, args.max_scroll_wait, args.enrich
 
 
 def main():
     # setting variables
     tag, name, password, url_limit, post_limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, \
-    driver_options, min_scroll_wait, max_scroll_wait = arg_parser()
+    driver_options, min_scroll_wait, max_scroll_wait, enrich = arg_parser()
     # setting log file
     logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
     # scraping urls and posts
     driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
     driver = Driver(*driver_set_up)
     logging.info('driver object - set')
-    HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, url_limit).\
-        shortcode_batch_generator()
+    htp = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, url_limit)
+    # set hash tage page instance for scrapping
+    logging.info('HashTagPage object - set')
+    # setting up DB connection
+    dbc = DBControl()
+    # scrapping for urls
+    for url_batch in htp.shortcode_batch_generator():
+        dbc.insert_shortcodes(url_batch)
     logging.info('done short code scrapping step')
-    PostScraper(driver).scrape(db_batch, post_limit)
+
+    ps = PostScraper(driver)
+    records = []
+    logging.info('connection to SQL server for post scraping and update step - successful')
+    logging.info('set limit value for post scrapping: {}'.format(post_limit))
+
+    while True:
+        batch = dbc.shortcodes_list_for_scraping(db_batch)
+        if any([not batch, ps.posts_scraped >= post_limit]):
+            dbc.check_post_to_scrap_sanity()
+            break
+        post_len2add = len(batch) + ps.posts_scraped
+        if post_len2add > post_limit:
+            delta = post_len2add - post_limit
+            batch, return_batch = batch[:delta], batch[delta:]
+            if len(return_batch) > 0:
+                dbc.unconfirm_end_scraping_for_shortcodes(return_batch)
+        records += ps.post_scraping(batch)
+        ps.posts_scraped += len(batch)
+        if len(records) >= POST_LENGTH_TO_COMMIT:
+            dbc.insert_posts(records)
+            records = []
     driver.driver.close()
     logging.info('done post scraping step')
+
+    #####################################
+
+    # 1)  use the enrich (int) variable to get post_text using dbc instance
+    # 2) iterate over the post_text lst
+    # 3) in each iteration create a instance of PostText with the post_text item (pt=PostText(<post_text>))
+    # 4) use the analyze_sentiment method of the PostText instance (pt.analyze_sentiment())
+    # 5) get language, translation and sentiment as pt methods and update in the DB:
+
+            # pt.language
+            # pt.translation
+            # pt.sentiment
+
+    # Good Night!
+
+    #####################################
 
 
 if __name__ == '__main__':
