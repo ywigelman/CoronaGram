@@ -27,14 +27,12 @@ class DBControl():
             password=self.password,
         )
         self.cursor = self.mydb.cursor()
-
         self.cursor.execute("SHOW DATABASES")
         existent_dbs = list(self.cursor)
         cond = False
         for i in existent_dbs:
             cond += self.database in i
-            if cond == True:
-                break
+            if cond == True: break
 
         if bool(cond) is False:
             self.cursor.execute(f"CREATE DATABASE {self.database}")
@@ -72,49 +70,75 @@ class DBControl():
 
         for table in tables_to_create:
             if table == 'post_to_scrap':
-                self.cursor.execute("CREATE TABLE post_to_scrap "
-                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, is_scraped BOOL DEFAULT 0,"
-                                 "in_process BOOL DEFAULT 0,"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-                logging.info('Table post_to_scrap created in DB')
-
+                self.create_post_to_scrap_table()
             if table == 'owner':
-                self.cursor.execute("CREATE TABLE owner "
-                                 "(id BIGINT PRIMARY KEY NOT NULL, is_verified BOOL,"
-                                 "profile_pic_url VARCHAR(2083), username VARCHAR(100),"
-                                 "full_name VARCHAR(100), is_private BOOL, is_unpublished BOOL,"
-                                 "tiering_recommendation BOOL, media_count INT, followed_by_count INT,"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-                logging.info('Table owner created in DB')
-
+                self.create_owner_table()
             if table == 'location':
-                self.cursor.execute("CREATE TABLE location "
-                                 "(id BIGINT PRIMARY KEY NOT NULL, has_public_page BOOL,"
-                                 "slug VARCHAR(150), json VARCHAR(1000),"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-                logging.info('Table location created in DB')
-
+                self.create_location_table()
             if table == 'post_info':
-                self.cursor.execute("CREATE TABLE post_info "
-                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, id BIGINT, hashtags VARCHAR(500),"
-                                 "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
-                                 "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
-                                 "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
-                                 "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
-                                    "CONSTRAINT FK_Shortcode1 FOREIGN KEY (shortcode) REFERENCES post_to_scrap(shortcode),"
-                                    "CONSTRAINT FK_owner FOREIGN KEY (owner_id) REFERENCES owner(id),"
-                                    "CONSTRAINT FK_location FOREIGN KEY (location_id) REFERENCES location(id),"
-                                    "CONSTRAINT FK_Shortcode2 FOREIGN KEY (shortcode) REFERENCES post_content(shortcode))")
-                logging.info('Table post_info created in DB')
-
+                self.create_post_info_table()
             if table == 'post_content':
-                self.cursor.execute("CREATE TABLE post_content "
-                                 "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, photo_url VARCHAR(1500),"
-                                 "ai_comment TEXT, post_text TEXT, comments TEXT, preview_comment TEXT,"
-                                 "location_name VARCHAR(100), multiple_photos TEXT,"
-                                 "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
-                logging.info('Table post_content created in DB')
+                self.create_post_content_table()
+
+    def create_post_to_scrap_table(self):
+        """
+        Create table post_to_scrap
+        """
+        self.cursor.execute("CREATE TABLE post_to_scrap "
+                            "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, is_scraped BOOL DEFAULT 0,"
+                            "in_process BOOL DEFAULT 0,"
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+        logging.info('Table post_to_scrap created in DB')
+
+    def create_owner_table(self):
+        """
+        Create table owner
+        """
+        self.cursor.execute("CREATE TABLE owner "
+                            "(id BIGINT PRIMARY KEY NOT NULL, is_verified BOOL,"
+                            "profile_pic_url VARCHAR(2083), username VARCHAR(100),"
+                            "full_name VARCHAR(100), is_private BOOL, is_unpublished BOOL,"
+                            "tiering_recommendation BOOL, media_count INT, followed_by_count INT,"
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+        logging.info('Table owner created in DB')
+
+    def create_location_table(self):
+        """
+        Create table location
+        """
+        self.cursor.execute("CREATE TABLE location "
+                            "(id BIGINT PRIMARY KEY NOT NULL, has_public_page BOOL,"
+                            "slug VARCHAR(150), json VARCHAR(1000),"
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+        logging.info('Table location created in DB')
+
+    def create_post_info_table(self):
+        """
+        Create table post_info
+        """
+        self.cursor.execute("CREATE TABLE post_info "
+                            "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, id BIGINT, hashtags VARCHAR(500),"
+                            "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
+                            "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
+                            "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
+                            "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
+                            "CONSTRAINT FK_Shortcode1 FOREIGN KEY (shortcode) REFERENCES post_to_scrap(shortcode),"
+                            "CONSTRAINT FK_owner FOREIGN KEY (owner_id) REFERENCES owner(id),"
+                            "CONSTRAINT FK_location FOREIGN KEY (location_id) REFERENCES location(id),"
+                            "CONSTRAINT FK_Shortcode2 FOREIGN KEY (shortcode) REFERENCES post_content(shortcode))")
+        logging.info('Table post_info created in DB')
+
+    def create_post_content_table(self):
+        """
+        Create table post_content
+        """
+        self.cursor.execute("CREATE TABLE post_content "
+                            "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, photo_url VARCHAR(1500),"
+                            "ai_comment TEXT, post_text TEXT, comments TEXT, preview_comment TEXT,"
+                            "location_name VARCHAR(100), multiple_photos TEXT,"
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+        logging.info('Table post_content created in DB')
 
 
     def insert_shortcodes(self, shortcodes):
@@ -225,22 +249,11 @@ class DBControl():
         """
         location_insert = []
         for post in post_array:
-            try:
-                location_id = post['location_id'][0]
-            except KeyError:
-                continue
-            try:
-                has_public_page = int(post['location_has_public_page'][0])
-            except KeyError:
-                has_public_page = None
-            try:
-                slug = post['location_slug'][0]
-            except KeyError:
-                slug = None
-            try:
-                json_field = post['location_json'][0]
-            except KeyError:
-                json_field = None
+            location_id = self.return_post_content_from_json(post, 'location_id')
+            if location_id == None: continue
+            has_public_page = self.return_int_post_content_from_json(post, 'location_has_public_page')
+            slug = self.return_post_content_from_json(post, 'location_slug')
+            json_field = self.return_post_content_from_json(post, 'location_json')
 
             post_columns_location = (location_id, has_public_page, slug, json_field)
             location_insert.append(deepcopy(post_columns_location))
@@ -259,16 +272,16 @@ class DBControl():
         """
         owner_insert = []
         for post in post_array:
-            owner_id = post['owner_id'][0]
-            is_verified = int(post['owner_is_verified'][0])
-            profile_pic_url = post['owner_profile_pic_url'][0]
-            username = post['owner_username'][0]
-            full_name = post['owner_full_name'][0]
-            is_private = int(post['owner_is_private'][0])
-            is_unpublished = int(post['owner_is_unpublished'][0])
-            tiering_recommendation = int(post['tiering_recommendation'][0])
-            media_count = int(post['owner_media_count'][0])
-            followed_by_count = int(post['owner_edge_followed_by_count'][0])
+            owner_id = self.return_post_content_from_json(post, 'owner_id')
+            is_verified = self.return_int_post_content_from_json(post, 'owner_is_verified')
+            profile_pic_url = self.return_post_content_from_json(post, 'owner_profile_pic_url')
+            username = self.return_post_content_from_json(post, 'owner_username')
+            full_name = self.return_post_content_from_json(post, 'owner_full_name')
+            is_private = self.return_int_post_content_from_json(post, 'owner_is_private')
+            is_unpublished = self.return_int_post_content_from_json(post, 'owner_is_unpublished')
+            tiering_recommendation = self.return_int_post_content_from_json(post, 'tiering_recommendation')
+            media_count = self.return_int_post_content_from_json(post, 'owner_media_count')
+            followed_by_count = self.return_int_post_content_from_json(post, 'owner_edge_followed_by_count')
 
             post_columns_owner = (owner_id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished, tiering_recommendation, media_count, followed_by_count)
             owner_insert.append(deepcopy(post_columns_owner))
@@ -283,42 +296,20 @@ class DBControl():
         self.cursor.executemany(sql, owner_insert)
         self.mydb.commit()
 
-
     def insert_post_content(self, post_array):
         """
         insert all posts from post_array in content table
         """
         content_insert = []
         for post in post_array:
-            shortcode = post['shortcode'][0]
-            try:
-                photo_url = str(post['photo_url'][0])
-            except KeyError:
-                photo_url = None
-            try:
-                ai_comment = post['ai_comment'][0]
-            except KeyError:
-                ai_comment = None
-            try:
-                post_text = str(post['post_text'][0])
-            except KeyError:
-                post_text = None
-            try:
-                comments = str(post['comments'][0])
-            except KeyError:
-                comments = None
-            try:
-                preview_comment = str(post['preview_comment'][0])
-            except KeyError:
-                preview_comment = None
-            try:
-                location_name = post['location_name'][0]
-            except KeyError:
-                location_name = None
-            try:
-                multiple_photos = str(post['multiple_photos'][0])
-            except KeyError:
-                multiple_photos = None
+            shortcode = self.return_post_content_from_json(post, 'shortcode')
+            photo_url = self.return_str_post_content_from_json(post, 'photo_url')
+            ai_comment = self.return_post_content_from_json(post, 'ai_comment')
+            post_text = self.return_str_post_content_from_json(post, 'post_text')
+            comments = self.return_str_post_content_from_json(post, 'comments')
+            preview_comment = self.return_str_post_content_from_json(post, 'preview_comment')
+            location_name = self.return_post_content_from_json(post, 'location_name')
+            multiple_photos = self.return_str_post_content_from_json(post, 'multiple_photos')
 
             post_columns_content = (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos)
             content_insert.append(deepcopy(post_columns_content))
@@ -333,63 +324,32 @@ class DBControl():
         self.mydb.commit()
 
 
-
     def insert_post_info(self, post_array):
         """
         insert all posts from post_array in info table
         """
         posts_insert = []
         for post in post_array:
-            shortcode = post['shortcode'][0]
-            post_id = post['id'][0]
-            owner_id = post['owner_id'][0]
-            try:
-                location_id = post['location_id'][0]
-            except KeyError:
-                location_id = None
+            shortcode = self.return_post_content_from_json(post, 'shortcode')
+            post_id = self.return_post_content_from_json(post, 'id')
+            owner_id = self.return_post_content_from_json(post, 'owner_id')
+            location_id = self.return_post_content_from_json(post, 'location_id')
             try:
                 hashtags = ", ".join(post['hashtags'][0])
             except KeyError:
                 hashtags = None
-            post_type = post['type'][0]
-            dim_height = int(post['dim_height'][0])
-            dim_width = int(post['dim_width'][0])
-            is_video = int(post['is_video'][0])
-            comment_count = int(post['comment_count'][0])
-            try:
-                preview_comment_count = int(post['preview_comment_count'][0])
-            except KeyError:
-                preview_comment_count = None
-
-            try:
-                comment_disabled = int(post['comments_disabled'][0])
-            except KeyError:
-                comment_disabled = None
-
-            try:
-                timestamp = int(post['timestamp'][0])
-            except KeyError:
-                timestamp = None
-
-            try:
-                like_count = int(post['like_count'][0])
-            except KeyError:
-                like_count = None
-
-            try:
-                is_ad = int(post['is_ad'][0])
-            except KeyError:
-                is_ad = None
-
-            try:
-                video_duration = float(post['video_duration'][0])
-            except KeyError:
-                video_duration = None
-
-            try:
-                product_type = post['product_type'][0]
-            except KeyError:
-                product_type = None
+            post_type = self.return_post_content_from_json(post, 'type')
+            dim_height = self.return_int_post_content_from_json(post, 'dim_height')
+            dim_width = self.return_int_post_content_from_json(post, 'dim_width')
+            is_video = self.return_int_post_content_from_json(post, 'is_video')
+            comment_count = self.return_int_post_content_from_json(post, 'comment_count')
+            preview_comment_count = self.return_int_post_content_from_json(post, 'preview_comment_count')
+            comment_disabled = self.return_int_post_content_from_json(post, 'comments_disabled')
+            timestamp = self.return_int_post_content_from_json(post, 'timestamp')
+            like_count = self.return_int_post_content_from_json(post, 'like_count')
+            is_ad = self.return_int_post_content_from_json(post, 'is_ad')
+            video_duration = self.return_float_post_content_from_json(post, 'video_duration')
+            product_type = self.return_post_content_from_json(post, 'product_type')
 
             post_columns_content = (shortcode, post_id, hashtags, owner_id, location_id, post_type, dim_height, dim_width, is_video,
                                            comment_count, preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration, product_type)
@@ -404,6 +364,47 @@ class DBControl():
               f"preview_comment_count=VALUES(preview_comment_count), comment_disabled=VALUES(comment_disabled)"
         self.cursor.executemany(sql, posts_insert)
         self.mydb.commit()
+
+
+    def return_post_content_from_json(self, dic, string):
+        """
+        Receive json, return the 'string' value from json, None if doesn't exist
+        """
+        try:
+            value = dic[string][0]
+        except KeyError:
+            value = None
+        return value
+
+    def return_str_post_content_from_json(self, dic, string):
+        """
+        Receive json, return the 'string' value from json in string format, None if doesn't exist
+        """
+        try:
+            value = str(dic[string][0])
+        except KeyError:
+            value = None
+        return value
+
+    def return_int_post_content_from_json(self, dic, string):
+        """
+        Receive json, return the 'string' value from json in int format, None if doesn't exist
+        """
+        try:
+            value = int(dic[string][0])
+        except KeyError:
+            value = None
+        return value
+
+    def return_float_post_content_from_json(self, dic, string):
+        """
+        Receive json, return the 'string' value from json in float format, None if doesn't exist
+        """
+        try:
+            value = float(dic[string][0])
+        except KeyError:
+            value = None
+        return value
 
 
 def test_insert_shortcode():
