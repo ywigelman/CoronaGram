@@ -480,22 +480,14 @@ def main():
     driver.driver.close()
     logging.info('done post scraping step')
 
-    #####################################
-
-    # 1)  use the enrich (int) variable to get post_text using dbc instance
-    # 2) iterate over the post_text lst
-    # 3) in each iteration create a instance of PostText with the post_text item (pt=PostText(<post_text>))
-    # 4) use the analyze_sentiment method of the PostText instance (pt.analyze_sentiment())
-    # 5) get language, translation and sentiment as pt methods and update in the DB:
-
-            # pt.language
-            # pt.translation
-            # pt.sentiment
-
-    # Good Night!
-
-    #####################################
-
+    logging.info('start translation step')
+    post_to_translate = dbc.select_post_to_translate(number=enrich)
+    for shortcode in post_to_translate:
+        text = dbc.select_post_text_to_translate(shortcode)
+        pt = PostText(text[0])
+        pt.analyze_sentiment()
+        dbc.update_translation_and_sentiment(shortcode, pt.language, pt.translation, pt.sentiment)
+    logging.info('end translation step')
 
 if __name__ == '__main__':
     main()

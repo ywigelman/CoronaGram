@@ -61,6 +61,8 @@ class PostText(object):
         """
         if not self.language:
             self.detect_language()
+        if self.language == to_lang:
+            return
         self.payload += '&source={}&target={}'.format(self.language, to_lang)
         resp = requests.request('POST', self.url_translation, data=self.payload.encode('utf-8'),
                                 headers=self.translate_headers)
@@ -72,7 +74,7 @@ class PostText(object):
         :param lang: the language to analyze from
         :return: None
         """
-        if not self.translation:
+        if not self.translation and self.language != lang:
             self.translate()
         query = {"documents": [
             {"id": "1", "language": "{}".format(lang),

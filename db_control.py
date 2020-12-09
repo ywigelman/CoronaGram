@@ -121,7 +121,7 @@ class DBControl():
                             "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
                             "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
                             "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
-                            "post_language VARCHAR(30), post_sentiment VARCHAR(30),"
+                            "language VARCHAR(30), sentiment VARCHAR(30),"
                             "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
                             "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
                             "CONSTRAINT FK_Shortcode1 FOREIGN KEY (shortcode) REFERENCES post_to_scrap(shortcode),"
@@ -214,19 +214,49 @@ class DBControl():
 
     def select_post_to_translate(self, number=1):
         """
-        check on post_info for shortcodes that were not translated yet, in post_language column
+        check on post_info for shortcodes that were not translated yet, in language column
         """
-        self.cursor.execute(f"SELECT shortcode FROM post_info WHERE post_language = NULL LIMIT {number}")
+        self.cursor.execute(f"SELECT shortcode FROM post_info WHERE language is NULL LIMIT {number}")
         shortcodes = list(self.cursor)
         return list(map(lambda x: x[0], shortcodes))
 
 
-    def insert_translation_to_post(self, shortcode, translation):
-        sql = "UPDATE post_content SET post_translation_text=%s WHERE shortcode=%s"
-        self.cursor.execute(sql, (shortcode, translation))
-        #self.mydb.commit()
-        #logging.debug(f'Insert to shortcode {shortcode} translation: {translation}')
+    def select_post_text_to_translate(self, shortcode):
+        """
+        select post text by shortcode for translation
+        """
+        self.cursor.execute(f"SELECT post_text FROM post_content WHERE shortcode = '{shortcode}'")
+        text = list(self.cursor)
+        return text
 
+
+    def update_translation_and_sentiment(self, shortcode, language, translation, sentiment):
+        """
+        update in db translation, language and sentiment of the post with specific shortcode
+        """
+        self.update_language_and_sentiment(shortcode, language, sentiment)
+        if translation != None:
+            self.insert_translation_to_post(shortcode, translation)
+        logging.debug(f'Insert to shortcode {shortcode} translation: {translation}, '
+                      f'language: {language}, sentiment: {sentiment}')
+
+
+    def update_language_and_sentiment(self, shortcode, language, sentiment):
+        """
+        update language and sentiment of specific shortcode in post_info table
+        """
+        sql = "UPDATE post_info SET language=%s, sentiment=%s WHERE shortcode=%s"
+        self.cursor.execute(sql, (language, sentiment, shortcode))
+        self.mydb.commit()
+
+
+    def insert_translation_to_post(self, shortcode, translation):
+        """
+        update translation in post_content table of specific shortcode
+        """
+        sql = "UPDATE post_content SET post_translation_text=%s WHERE shortcode=%s"
+        self.cursor.execute(sql, (translation, shortcode))
+        self.mydb.commit()
 
 
     def insert_posts(self, post_array):
@@ -434,10 +464,3 @@ def test_insert_shortcode():
     dbc.insert_shortcodes(shortcodes)
     shortcodes1 = dbc.shortcodes_list_for_scraping(limit=1)
     print(shortcodes1)
-
-
-def main():
-    test_insert_shortcode()
-
-if __name__ == '__main__':
-    main()
