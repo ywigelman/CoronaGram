@@ -61,7 +61,7 @@ INSTAGRAM_SUBMIT_TAG = "//button[@type=\"submit\"]"
 INSTAGRAM_NOT_NOW_BUTTON = "//button[text()='Not Now']"
 LOGIN_PAGE_WAIT = 3
 
-# constants with default values for instanting DRIVER object
+# constants with default values for instancing DRIVER object
 DEFAULT_IMPLICIT_WAIT = 50
 DEFAULT_BROWSER = 'CHROME'
 DEFAULT_EXECUTABLE = None
@@ -76,7 +76,7 @@ NONE_OPTION_VALUE = 'note that you have chosen None as an option for your browse
 IMPLICIT_WAIT_NOT_INT = 'Implicit wait must be an integer'
 IMPLICIT_WAIT_NOT_NEG = 'Implicit can not hold negative values'
 
-# constants with default values for instanting HashTagPage object
+# constants with default values for instancing HashTagPage object
 END_OF_SHORT_CODE_SCAPE_MSG = 'shortcode scraping is done - either you scraped everything, reached your limit or ' \
                               'something went wrong. (lets hope it\'s the first one)'
 STEP_SIZE = 0.1
@@ -105,7 +105,8 @@ X_RAPID_API_KEY = 'dc8d389c8emsh7b62cf28feb4648p1285cdjsn788a129fffc5'
 X_RAPID_API_HOST = 'google-translate1.p.rapidapi.com'
 URL_LANGUAGE = 'https://google-translate1.p.rapidapi.com/language/translate/v2/detect'
 URL_TRANSLATION = 'https://google-translate1.p.rapidapi.com/language/translate/v2'
--URL_SENTIMENT = 'https://textanalyticsitc.cognitiveservices.azure.com//text/analytics/v3.0/sentiment'
+URL_SENTIMENT = 'https://textanalyticsitc.cognitiveservices.azure.com//text/analytics/v3.0/sentiment'
+SENTIMENT_SUBSCRIPTION_KEY = 'd2d3dc2b2fc94b64982dc912169f0a85'
 TARGET_LANG = 'en'
 
 # general CLI constants
