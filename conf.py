@@ -88,12 +88,26 @@ DEFAULT_STOP_CODE = None
 SCROLL_2_BOTTOM = 'window.scrollTo(0, document.body.scrollHeight);'  # java scrip command for scrolling to page bottom
 SCROLL_HEIGHT = 'return document.body.scrollHeight'  # java scrip command for getting scroll height
 
-# constants with default values for instanting PostScraper object
+# constants with default values for instancing PostScraper object
 DEFAULT_BATCH_SIZE = 50
 DEFAULT_POST_LIMIT = np.inf
-
 POST_LENGTH_TO_COMMIT = 10
 
+# constants for DB connections
 DB_NAME = 'itc1'
 DB_HOST_NAME = "localhost"
 DB_USER_NAME = "root"
+
+# POST_TEXT constants
+CONTENT_TYPE = 'application/x-www-form-urlencoded'
+ACCEPT_ENCODING = 'application/gzip'
+X_RAPID_API_KEY = 'dc8d389c8emsh7b62cf28feb4648p1285cdjsn788a129fffc5'
+X_RAPID_API_HOST = 'google-translate1.p.rapidapi.com'
+URL_LANGUAGE = 'https://google-translate1.p.rapidapi.com/language/translate/v2/detect'
+URL_TRANSLATION = 'https://google-translate1.p.rapidapi.com/language/translate/v2'
+-URL_SENTIMENT = 'https://textanalyticsitc.cognitiveservices.azure.com//text/analytics/v3.0/sentiment'
+TARGET_LANG = 'en'
+
+# general CLI constants
+MAX_ENRICH = 0
+
