@@ -17,6 +17,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import WebDriverException
 from sentiment import PostText
 
+
 class ClassAttributeError(Exception):
     def __init__(self, wrong_input, class_name: str, attribute_name: str, additional: str = None):
         """
@@ -94,7 +95,7 @@ class Driver(object):
         """
         self._options = self._options()
         self._options.add_experimental_option("prefs", {"intl.accept_languages": "en-EN"})
-        for option in set(options): # using "set" in case the same option was added more than once
+        for option in set(options):  # using "set" in case the same option was added more than once
             try:
                 self._options.add_argument(option)
             except ValueError:
@@ -393,6 +394,8 @@ class PostScraper(object):
 
 
 def arg_parser():
+    # noinspection PyTypeChecker
+    # this PEP8 error here is a known false positive error of argparse
     parser = argparse.ArgumentParser(prog='coronagram.py', description=f'#### Instagram Scrapping ####\n',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('tag', type=str, help='Choose a #hashtag')
@@ -488,6 +491,7 @@ def main():
         pt.analyze_sentiment()
         dbc.update_translation_and_sentiment(shortcode, pt.language, pt.translation, pt.sentiment)
     logging.info('end translation step')
+
 
 if __name__ == '__main__':
     main()
