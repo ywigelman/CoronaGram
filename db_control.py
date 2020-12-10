@@ -5,6 +5,7 @@ from conf import *
 
 logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
 
+
 class DBControl():
     def __init__(self, database=DB_NAME, host=DB_HOST_NAME, user=DB_USER_NAME, password=""):
         '''
@@ -48,7 +49,6 @@ class DBControl():
         )
         self.cursor = self.mydb.cursor()
         logging.info('DB created')
-
 
     def create_tables(self):
         """
@@ -141,7 +141,6 @@ class DBControl():
                             "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
         logging.info('Table post_content created in DB')
 
-
     def insert_shortcodes(self, shortcodes):
         """
         insert in table post_to_scrap shortcodes that are scrapped in hashtag page
@@ -153,8 +152,6 @@ class DBControl():
         self.cursor.executemany(sql, shortcodes)
         self.mydb.commit()
         logging.debug(f'Shortcodes inserted in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
-
-
 
     def confirm_end_scraping_for_shortcodes(self, shortcodes):
         """
@@ -168,7 +165,6 @@ class DBControl():
         self.mydb.commit()
         logging.debug(f'Shortcodes updated in DB in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
 
-
     def unconfirm_end_scraping_for_shortcodes(self, shortcodes):
         """
         after scrapping, this function updates post_to_scrap table with status not scraped for shortcodes that were not scraped
@@ -179,15 +175,16 @@ class DBControl():
         sql = "UPDATE post_to_scrap SET is_scraped = 0, in_process = 0 WHERE shortcode=%s"
         self.cursor.executemany(sql, shortcodes)
         self.mydb.commit()
-        logging.debug(f'Shortcodes not inserted in DB updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
-
+        logging.debug(
+            f'Shortcodes not inserted in DB updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
 
     def shortcodes_list_for_scraping(self, limit=16):
         """
         This function checks which shortcodes are not yet scraped
         return a limit of 16 shortcodes by default in a list
         """
-        self.cursor.execute(f"SELECT shortcode FROM post_to_scrap WHERE is_scraped = 0 AND in_process = 0 LIMIT {limit}")
+        self.cursor.execute(
+            f"SELECT shortcode FROM post_to_scrap WHERE is_scraped = 0 AND in_process = 0 LIMIT {limit}")
         shortcodes = list(self.cursor)
 
         sql = "UPDATE post_to_scrap SET in_process = 1 WHERE shortcode=%s"
@@ -196,7 +193,6 @@ class DBControl():
         shortcodes = list(map(lambda x: x[0], shortcodes))
         logging.debug(f'Shortcodes list in post_to_scrap for scraping: {", ".join(shortcodes)}')
         return shortcodes
-
 
     def check_post_to_scrap_sanity(self):
         """
@@ -209,8 +205,8 @@ class DBControl():
         sql = "UPDATE post_to_scrap SET in_process = 0 WHERE shortcode=%s"
         self.cursor.executemany(sql, shortcodes)
         self.mydb.commit()
-        logging.debug(f'Shortcodes list sanity updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
-
+        logging.debug(
+            f'Shortcodes list sanity updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
 
     def select_post_to_translate(self, number=1):
         """
@@ -220,7 +216,6 @@ class DBControl():
         shortcodes = list(self.cursor)
         return list(map(lambda x: x[0], shortcodes))
 
-
     def select_post_text_to_translate(self, shortcode):
         """
         select post text by shortcode for translation
@@ -228,7 +223,6 @@ class DBControl():
         self.cursor.execute(f"SELECT post_text FROM post_content WHERE shortcode = '{shortcode}'")
         text = list(self.cursor)
         return text
-
 
     def update_translation_and_sentiment(self, shortcode, language, translation, sentiment):
         """
@@ -240,7 +234,6 @@ class DBControl():
         logging.debug(f'Insert to shortcode {shortcode} translation: {translation}, '
                       f'language: {language}, sentiment: {sentiment}')
 
-
     def update_language_and_sentiment(self, shortcode, language, sentiment):
         """
         update language and sentiment of specific shortcode in post_info table
@@ -249,7 +242,6 @@ class DBControl():
         self.cursor.execute(sql, (language, sentiment, shortcode))
         self.mydb.commit()
 
-
     def insert_translation_to_post(self, shortcode, translation):
         """
         update translation in post_content table of specific shortcode
@@ -257,7 +249,6 @@ class DBControl():
         sql = "UPDATE post_content SET post_translation_text=%s WHERE shortcode=%s"
         self.cursor.execute(sql, (translation, shortcode))
         self.mydb.commit()
-
 
     def insert_posts(self, post_array):
         """
@@ -268,7 +259,6 @@ class DBControl():
         self.insert_location(post_array)
         self.insert_post_info(post_array)
         self.update_post_to_scrap(post_array)
-
 
     def update_post_to_scrap(self, post_array):
         """
@@ -288,8 +278,8 @@ class DBControl():
         shortcodes_to_scrap_not_validated = list(set(shortcodes_scraped) - set(updated_shortcode_checked))
         if len(shortcodes_to_scrap_not_validated) > 0:
             self.confirm_end_scraping_for_shortcodes(shortcodes_to_scrap_not_validated)
-            logging.debug(f'Shortcodes not scrapped updated in post_to_scrap: {", ".join(shortcodes_to_scrap_not_validated)}')
-
+            logging.debug(
+                f'Shortcodes not scrapped updated in post_to_scrap: {", ".join(shortcodes_to_scrap_not_validated)}')
 
     def insert_location(self, post_array):
         """
@@ -305,14 +295,15 @@ class DBControl():
 
             post_columns_location = (location_id, has_public_page, slug, json_field)
             location_insert.append(deepcopy(post_columns_location))
-            logging.debug(f'Location data to insert in location table: {", ".join(list(map(lambda x: str(x), post_columns_location)))}')
-            logging.debug(f'Location data to insert in location table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_location))))}')
+            logging.debug(
+                f'Location data to insert in location table: {", ".join(list(map(lambda x: str(x), post_columns_location)))}')
+            logging.debug(
+                f'Location data to insert in location table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_location))))}')
 
         sql = f"INSERT INTO location (id, has_public_page, slug, json) " \
               f"VALUES (%s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE has_public_page=VALUES(has_public_page), slug=VALUES(slug), json=VALUES(json)"
         self.cursor.executemany(sql, location_insert)
         self.mydb.commit()
-
 
     def insert_owner(self, post_array):
         """
@@ -331,11 +322,15 @@ class DBControl():
             media_count = self.return_int_post_content_from_json(post, 'owner_media_count')
             followed_by_count = self.return_int_post_content_from_json(post, 'owner_edge_followed_by_count')
 
-            post_columns_owner = (owner_id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished, tiering_recommendation, media_count, followed_by_count)
+            post_columns_owner = (
+            owner_id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished,
+            tiering_recommendation, media_count, followed_by_count)
             owner_insert.append(deepcopy(post_columns_owner))
 
-            logging.debug(f'Owner data to insert in owner table: {", ".join(list(map(lambda x: str(x), post_columns_owner)))}')
-            logging.debug(f'Owner data to insert in owner table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_owner))))}')
+            logging.debug(
+                f'Owner data to insert in owner table: {", ".join(list(map(lambda x: str(x), post_columns_owner)))}')
+            logging.debug(
+                f'Owner data to insert in owner table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_owner))))}')
 
         sql = f"INSERT INTO owner (id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished, tiering_recommendation, media_count, followed_by_count) " \
               f"VALUES (%s ,%s, %s ,%s, %s ,%s, %s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE is_verified=VALUES(is_verified), profile_pic_url=VALUES(profile_pic_url), " \
@@ -359,18 +354,20 @@ class DBControl():
             location_name = self.return_post_content_from_json(post, 'location_name')
             multiple_photos = self.return_str_post_content_from_json(post, 'multiple_photos')
 
-            post_columns_content = (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos)
+            post_columns_content = (
+            shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos)
             content_insert.append(deepcopy(post_columns_content))
 
-            logging.debug(f'Post content data to insert in post_content table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
-            logging.debug(f'Post content data to insert in post_content table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
+            logging.debug(
+                f'Post content data to insert in post_content table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
+            logging.debug(
+                f'Post content data to insert in post_content table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
 
         sql = f"INSERT INTO post_content (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos) " \
               f"VALUES (%s ,%s, %s ,%s, %s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE comments=VALUES(comments), multiple_photos=VALUES(multiple_photos), " \
               f"preview_comment=VALUES(preview_comment), ai_comment=VALUES(ai_comment)"
         self.cursor.executemany(sql, content_insert)
         self.mydb.commit()
-
 
     def insert_post_info(self, post_array):
         """
@@ -399,20 +396,23 @@ class DBControl():
             video_duration = self.return_float_post_content_from_json(post, 'video_duration')
             product_type = self.return_post_content_from_json(post, 'product_type')
 
-            post_columns_content = (shortcode, post_id, hashtags, owner_id, location_id, post_type, dim_height, dim_width, is_video,
-                                           comment_count, preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration, product_type)
+            post_columns_content = (
+            shortcode, post_id, hashtags, owner_id, location_id, post_type, dim_height, dim_width, is_video,
+            comment_count, preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration,
+            product_type)
             posts_insert.append(deepcopy(post_columns_content))
 
-            logging.debug(f'Post info data to insert in post_info table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
-            logging.debug(f'Post info data to insert in post_info table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
+            logging.debug(
+                f'Post info data to insert in post_info table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
+            logging.debug(
+                f'Post info data to insert in post_info table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
 
         sql = f"INSERT INTO post_info (shortcode, id, hashtags, owner_id, location_id, type, dim_height, dim_width, is_video, comment_count, " \
-                  f"preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration, product_type) " \
+              f"preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration, product_type) " \
               f"VALUES (%s ,%s, %s, %s, %s, %s ,%s, %s ,%s, %s ,%s ,%s ,%s ,%s ,%s ,%s ,%s) ON DUPLICATE KEY UPDATE comment_count=VALUES(comment_count), " \
               f"preview_comment_count=VALUES(preview_comment_count), comment_disabled=VALUES(comment_disabled)"
         self.cursor.executemany(sql, posts_insert)
         self.mydb.commit()
-
 
     def return_post_content_from_json(self, dic, string):
         """
