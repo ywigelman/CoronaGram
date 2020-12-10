@@ -54,8 +54,6 @@ python coronagram.py corona misterLovaLova 12345678
 | -hd   | --headed_mode     | running in headed mode (graphical browser)                                                  | False               |                                                                                                                               |
 | -en   | --enrich          | maximum number of API enrichment tasks                                                      | 0                   | API enrichment includes detection of post language, translation, and analysis of sentiment ( positive, negative or neutral)   |
 
-headed_mode
-
 ### DataBase ERD
 
 ![ERD](images/instascrapERD.png)
