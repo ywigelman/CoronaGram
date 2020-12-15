@@ -65,11 +65,12 @@ LOGIN_PAGE_WAIT = 3
 DEFAULT_IMPLICIT_WAIT = 50
 DEFAULT_BROWSER = 'CHROME'
 DEFAULT_EXECUTABLE = None
-DRIVER_KEY, OPTIONS_KEY = 'DRIVER', 'OPTIONS'
+DRIVER_KEY, OPTIONS_KEY, CAPABILITIES = 'DRIVER', 'OPTIONS', 'CAPABILITIES'
 WEBDRIVER_BROWSERS = {'CHROME': {DRIVER_KEY: wd.Chrome,
-                                 OPTIONS_KEY: wd.chrome.options.Options},
+                                 OPTIONS_KEY: wd.chrome.options.Options,
+                                 CAPABILITIES: wd.DesiredCapabilities.CHROME.copy()},
                       'FIREFOX': {DRIVER_KEY: wd.Firefox,
-                                  OPTIONS_KEY: wd.FirefoxOptions}}
+                                  OPTIONS_KEY: wd.FirefoxOptions, CAPABILITIES: wd.DesiredCapabilities.FIREFOX.copy()}}
 HEADLESS_MODE = '--headless'  # command for running in headless mode
 DEFAULT_DRIVER_OPTIONS = []
 NONE_OPTION_VALUE = 'note that you have chosen None as an option for your browser. this request will be ignored'
@@ -112,3 +113,8 @@ TARGET_LANG = 'en'
 # general CLI constants
 MAX_ENRICH = 0
 
+# proxy server
+PROXY = 'http://lum-customer-hl_f94232c6-zone-social_networks-unblocker:82fe6skp6uh9@zproxy.lum-superproxy.io:22225'
+PROXY_DICT = {'httpProxy': PROXY, 'ftpProxy': PROXY, 'sslProxy': PROXY, 'noProxy': None, 'proxyType': 'MANUAL',
+              'class': 'org.openqa.selenium.Proxy', 'autodetect': False}
+PROXY_KEY = 'proxy'
