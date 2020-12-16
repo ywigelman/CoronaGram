@@ -112,9 +112,3 @@ TARGET_LANG = 'en'
 
 # general CLI constants
 MAX_ENRICH = 0
-
-# proxy server
-PROXY = 'http://lum-customer-hl_f94232c6-zone-social_networks-unblocker:82fe6skp6uh9@zproxy.lum-superproxy.io:22225'
-PROXY_DICT = {'httpProxy': PROXY, 'ftpProxy': PROXY, 'sslProxy': PROXY, 'noProxy': None, 'proxyType': 'MANUAL',
-              'class': 'org.openqa.selenium.Proxy', 'autodetect': False}
-PROXY_KEY = 'proxy'

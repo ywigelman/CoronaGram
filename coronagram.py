@@ -54,7 +54,8 @@ class Driver(object):
         self._user_name = user_name
         self._password = password
         self._browser = browser.upper()
-        self._driver, self._options, self._capabilities = self._browser_dict()  # selecting suitable driver and option objects
+        self._driver, self._options = self._browser_dict()
+        # selecting suitable driver and option objects
         self._set_options(list(*options))  # setting option object
         self._executable = executable
         self._implicit_wait = implicit_wait
@@ -109,14 +110,12 @@ class Driver(object):
         :return: None
         """
 
-        self._capabilities[PROXY_KEY] = PROXY_DICT
         try:
             if self._executable:
                 self._executable = str(Path(self._executable).resolve())
-                self._driver = self._driver(executable_path=self._executable, options=self._options,
-                                            desired_capabilities=self._capabilities)
+                self._driver = self._driver(executable_path=self._executable, options=self._options)
             else:
-                self._driver = self._driver(options=self._options,  desired_capabilities=self._capabilities)
+                self._driver = self._driver(options=self._options)
         except (WebDriverException, NotADirectoryError):
             raise ClassAttributeError(self._executable, self.__class__.__name__, '{} executable'.format(self._browser))
 

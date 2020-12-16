@@ -38,8 +38,11 @@ class PostText(object):
         a function for parsing post text item to contain only the content
         :return: None
         """
-        self.text = eval(self.text[0])[0]['node']['text']
-        self.clean = True
+        try:
+            self.text = eval(self.text[0])[0]['node']['text']
+            self.clean = True
+        except IndexError:
+            return
 
     def detect_language(self):
         """
@@ -48,10 +51,15 @@ class PostText(object):
         """
         if not self.clean:
             self._text_clean()
+        if not self.clean:
+            return
         self.payload = "q={}".format(self.text)
         resp = requests.request('POST', self.url_language, data=self.payload.encode('utf-8'),
                                 headers=self.translate_headers)
-        self.language = json.loads(resp.text)['data']['detections'][0][0]['language']
+        try:
+            self.language = json.loads(resp.text)['data']['detections'][0][0]['language']
+        except KeyError:
+            return
 
     def translate(self, to_lang: str = TARGET_LANG):
         """
@@ -61,12 +69,15 @@ class PostText(object):
         """
         if not self.language:
             self.detect_language()
-        if self.language == to_lang:
+        if not all([self.clean, self.language != to_lang]):
             return
         self.payload += '&source={}&target={}'.format(self.language, to_lang)
         resp = requests.request('POST', self.url_translation, data=self.payload.encode('utf-8'),
                                 headers=self.translate_headers)
-        self.translation = json.loads(resp.text)['data']['translations'][0]['translatedText']
+        try:
+            self.translation = json.loads(resp.text)['data']['translations'][0]['translatedText']
+        except KeyError:
+            return
 
     def analyze_sentiment(self, lang: str = TARGET_LANG):
         """
@@ -76,6 +87,8 @@ class PostText(object):
         """
         if not self.translation and self.language != lang:
             self.translate()
+        if not self.clean:
+            return
         query = {"documents": [
             {"id": "1", "language": "{}".format(lang),
              "text": "{}".format(self.translation)}

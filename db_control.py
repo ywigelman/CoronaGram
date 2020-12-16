@@ -117,7 +117,7 @@ class DBControl():
         Create table post_info
         """
         self.cursor.execute("CREATE TABLE post_info "
-                            "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, id BIGINT, hashtags VARCHAR(500),"
+                            "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, id BIGINT, hashtags VARCHAR(2000),"
                             "owner_id BIGINT, location_id BIGINT, type VARCHAR(30),"
                             "dim_height INT, dim_width INT, is_video BOOL, comment_count INT,"
                             "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
