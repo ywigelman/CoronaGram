@@ -9,6 +9,7 @@ import pandas as pd
 import regex as re
 from bs4 import BeautifulSoup
 from conf import *
+from hidden_conf import *
 from db_control import DBControl
 import logging
 import sys
@@ -16,7 +17,10 @@ from json.decoder import JSONDecodeError
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import WebDriverException
 from sentiment import PostText
+from selenium.webdriver.common.proxy import Proxy, ProxyType
 
+__version__ = '1.0'
+__author__ = 'Yair Stemmer and Yoav Wigelman'
 
 class ClassAttributeError(Exception):
     def __init__(self, wrong_input, class_name: str, attribute_name: str, additional: str = None):
@@ -37,7 +41,7 @@ class ClassAttributeError(Exception):
 class Driver(object):
 
     def __init__(self, user_name: str, password: str, browser: str, implicit_wait: int = DEFAULT_IMPLICIT_WAIT,
-                 executable: Union[str, Path, None] = DEFAULT_EXECUTABLE, *options):
+                 executable: Union[str, Path, None] = DEFAULT_EXECUTABLE, proxy: bool = False, *options):
         """
         Driver is an object for generating and setting selenium webdriver object with more friendly API and some
         limited options that are suitable for the task of url scrapping from instagram hashtag web pages
@@ -54,10 +58,11 @@ class Driver(object):
         self._user_name = user_name
         self._password = password
         self._browser = browser.upper()
-        self._driver, self._options = self._browser_dict()
+        self._driver, self._options, self._capabilities = self._browser_dict()
         # selecting suitable driver and option objects
         self._set_options(list(*options))  # setting option object
         self._executable = executable
+        self._proxy = proxy
         self._implicit_wait = implicit_wait
         self._validate_implicit_wait()
         self._set_driver()
@@ -74,7 +79,7 @@ class Driver(object):
             raise ClassAttributeError(self._browser, Driver.__class__.__name__, 'browser')
         browser_dict = WEBDRIVER_BROWSERS[self._browser]
         logging.info('selected browser: {}'.format(self._browser))
-        return browser_dict[DRIVER_KEY], browser_dict[OPTIONS_KEY], browser_dict[CAPABILITIES]
+        return browser_dict[DRIVER_KEY], browser_dict[OPTIONS_KEY], browser_dict[CAPABILITIES_KEY]
 
     def _validate_implicit_wait(self) -> None:
         """
@@ -95,7 +100,7 @@ class Driver(object):
         :param options: list object that represent user requirements to be used as driver options
         """
         self._options = self._options()
-        self._options.add_experimental_option("prefs", {"intl.accept_languages": "en-EN"})
+        self._options.add_experimental_option(*LUNG_PREF_ARGS)
         for option in set(options):  # using "set" in case the same option was added more than once
             try:
                 self._options.add_argument(option)
@@ -104,21 +109,33 @@ class Driver(object):
         if self._options:
             logging.info('browser options set successfully')
 
+    def _set_proxy(self) -> None:
+        """
+        a method for setting a proxy before setting the diver
+        :return: None
+        """
+        self._proxy = Proxy()
+        self._proxy.proxy_type = ProxyType.MANUAL
+        self._proxy.http_proxy = PROXY
+        self._proxy.ssl_proxy = PROXY
+        self._proxy.add_to_capabilities(self._capabilities)
+
     def _set_driver(self) -> None:
         """
         a class method for setting web driving including all user selected options
         :return: None
         """
-
+        if self._proxy:
+            self._set_proxy()
         try:
             if self._executable:
                 self._executable = str(Path(self._executable).resolve())
-                self._driver = self._driver(executable_path=self._executable, options=self._options)
+                self._driver = self._driver(executable_path=self._executable, options=self._options,
+                                            desired_capabilities=self._capabilities)
             else:
-                self._driver = self._driver(options=self._options)
+                self._driver = self._driver(options=self._options, desired_capabilities=self._capabilities)
         except (WebDriverException, NotADirectoryError):
             raise ClassAttributeError(self._executable, self.__class__.__name__, '{} executable'.format(self._browser))
-
         logging.info('successfully setting driver object')
 
     @property
@@ -432,6 +449,7 @@ def arg_parser():
                         help='maximum number of seconds to wait after each scroll')
     parser.add_argument('-hd', '--headed_mode', help='running in headed mode (graphical browser)', action='store_true')
     parser.add_argument('-en', '--enrich', help='maximum number of API enrichment tasks', type=int, default=MAX_ENRICH)
+    parser.add_argument('-p', '--proxy', help='use proxy', action='store_true')
 
     args = parser.parse_args()
     if not args.headed_mode:
@@ -439,17 +457,17 @@ def arg_parser():
 
     return args.tag, args.name, args.password, args.url_limit, args.post_limit, args.browser, args.executable, \
            args.db_batch, args.from_code, args.stop_code, args.implicit_wait, args.driver_options, \
-           args.min_scroll_wait, args.max_scroll_wait, args.enrich
+           args.min_scroll_wait, args.max_scroll_wait, args.enrich, args.proxy
 
 
 def main():
     # setting variables
     tag, name, password, url_limit, post_limit, browser, executable, db_batch, from_code, stop_code, implicit_wait, \
-    driver_options, min_scroll_wait, max_scroll_wait, enrich = arg_parser()
+    driver_options, min_scroll_wait, max_scroll_wait, enrich, proxy = arg_parser()
     # setting log file
     logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
     # scraping urls and posts
-    driver_set_up = (name, password, browser, implicit_wait, executable, driver_options)
+    driver_set_up = (name, password, browser, implicit_wait, executable, proxy, driver_options)
     driver = Driver(*driver_set_up)
     logging.info('driver object - set')
     htp = HashTagPage(tag, driver, max_scroll_wait, min_scroll_wait, from_code, stop_code, url_limit)

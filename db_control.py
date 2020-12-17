@@ -3,14 +3,18 @@ from copy import deepcopy
 import logging
 from conf import *
 
+__version__ = '1.0'
+__author__ = 'Yair Stemmer and Yoav Wigelman'
+
+
 logging.basicConfig(filename=DEFAULT_LOG_FILE_PATH, format=DEFAULT_LOG_FILE_FORMAT, level=logging.INFO)
 
 
-class DBControl():
+class DBControl(object):
     def __init__(self, database=DB_NAME, host=DB_HOST_NAME, user=DB_USER_NAME, password=""):
-        '''
+        """
         Init DBControl class with DB parameters, cursor, create DB, tables and columns
-        '''
+        """
         self.database = database
         self.host = host
         self.user = user
@@ -33,7 +37,8 @@ class DBControl():
         cond = False
         for i in existent_dbs:
             cond += self.database in i
-            if cond == True: break
+            if cond:
+                break
 
         if bool(cond) is False:
             self.cursor.execute(f"CREATE DATABASE {self.database}")
@@ -87,7 +92,8 @@ class DBControl():
         self.cursor.execute("CREATE TABLE post_to_scrap "
                             "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, is_scraped BOOL DEFAULT 0,"
                             "in_process BOOL DEFAULT 0,"
-                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT "
+                            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
         logging.info('Table post_to_scrap created in DB')
 
     def create_owner_table(self):
@@ -99,7 +105,8 @@ class DBControl():
                             "profile_pic_url VARCHAR(2083), username VARCHAR(100),"
                             "full_name VARCHAR(100), is_private BOOL, is_unpublished BOOL,"
                             "tiering_recommendation BOOL, media_count INT, followed_by_count INT,"
-                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT"
+                            " CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
         logging.info('Table owner created in DB')
 
     def create_location_table(self):
@@ -109,7 +116,8 @@ class DBControl():
         self.cursor.execute("CREATE TABLE location "
                             "(id BIGINT PRIMARY KEY NOT NULL, has_public_page BOOL,"
                             "slug VARCHAR(150), json VARCHAR(1000),"
-                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT "
+                            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
         logging.info('Table location created in DB')
 
     def create_post_info_table(self):
@@ -123,7 +131,8 @@ class DBControl():
                             "preview_comment_count INT, comment_disabled BOOL, timestamp INT,"
                             "language VARCHAR(30), sentiment VARCHAR(30),"
                             "like_count INT, is_ad BOOL, video_duration REAL, product_type VARCHAR(10),"
-                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT "
+                            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
                             "CONSTRAINT FK_Shortcode1 FOREIGN KEY (shortcode) REFERENCES post_to_scrap(shortcode),"
                             "CONSTRAINT FK_owner FOREIGN KEY (owner_id) REFERENCES owner(id),"
                             "CONSTRAINT FK_location FOREIGN KEY (location_id) REFERENCES location(id),"
@@ -138,7 +147,8 @@ class DBControl():
                             "(shortcode VARCHAR(30) PRIMARY KEY NOT NULL, photo_url VARCHAR(1500),"
                             "ai_comment TEXT, post_text TEXT, post_translation_text TEXT, comments TEXT,"
                             "preview_comment TEXT, location_name VARCHAR(100), multiple_photos TEXT,"
-                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
+                            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT "
+                            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)")
         logging.info('Table post_content created in DB')
 
     def insert_shortcodes(self, shortcodes):
@@ -167,7 +177,8 @@ class DBControl():
 
     def unconfirm_end_scraping_for_shortcodes(self, shortcodes):
         """
-        after scrapping, this function updates post_to_scrap table with status not scraped for shortcodes that were not scraped
+        after scrapping, this function updates post_to_scrap table with status not scraped for shortcodes that were
+        not scraped
         """
         if type(shortcodes[0]) is str:
             shortcodes = list(map(lambda x: (x,), shortcodes))
@@ -176,7 +187,8 @@ class DBControl():
         self.cursor.executemany(sql, shortcodes)
         self.mydb.commit()
         logging.debug(
-            f'Shortcodes not inserted in DB updated in post_to_scrap: {", ".join(list(map(lambda x: x[0], shortcodes)))}')
+            f'Shortcodes not inserted in DB updated in post_to_scrap: '
+            f'{", ".join(list(map(lambda x: x[0], shortcodes)))}')
 
     def shortcodes_list_for_scraping(self, limit=16):
         """
@@ -196,8 +208,8 @@ class DBControl():
 
     def check_post_to_scrap_sanity(self):
         """
-        after scrapping process, check in post_to_scrap if there are shortcodes that did not finish the scraping process,
-        and redefine there status to not in process, in order to be recalled in the next scrapping process.
+        after scrapping process, check in post_to_scrap if there are shortcodes that did not finish the scraping
+        process, and redefine there status to not in process, in order to be recalled in the next scrapping process.
         """
         self.cursor.execute(f"SELECT shortcode FROM post_to_scrap WHERE is_scraped = 0 AND in_process = 1")
         shortcodes = list(self.cursor)
@@ -229,7 +241,7 @@ class DBControl():
         update in db translation, language and sentiment of the post with specific shortcode
         """
         self.update_language_and_sentiment(shortcode, language, sentiment)
-        if translation != None:
+        if translation is not None:
             self.insert_translation_to_post(shortcode, translation)
         logging.debug(f'Insert to shortcode {shortcode} translation: {translation}, '
                       f'language: {language}, sentiment: {sentiment}')
@@ -288,7 +300,7 @@ class DBControl():
         location_insert = []
         for post in post_array:
             location_id = self.return_post_content_from_json(post, 'location_id')
-            if location_id == None: continue
+            if location_id is None: continue
             has_public_page = self.return_int_post_content_from_json(post, 'location_has_public_page')
             slug = self.return_post_content_from_json(post, 'location_slug')
             json_field = self.return_post_content_from_json(post, 'location_json')
@@ -296,12 +308,15 @@ class DBControl():
             post_columns_location = (location_id, has_public_page, slug, json_field)
             location_insert.append(deepcopy(post_columns_location))
             logging.debug(
-                f'Location data to insert in location table: {", ".join(list(map(lambda x: str(x), post_columns_location)))}')
+                f'Location data to insert in location table: '
+                f'{", ".join(list(map(lambda x: str(x), post_columns_location)))}')
             logging.debug(
-                f'Location data to insert in location table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_location))))}')
+                f'Location data to insert in location table type: '
+                f'{", ".join(list(map(lambda x: str(type(x)), list(post_columns_location))))}')
 
         sql = f"INSERT INTO location (id, has_public_page, slug, json) " \
-              f"VALUES (%s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE has_public_page=VALUES(has_public_page), slug=VALUES(slug), json=VALUES(json)"
+              f"VALUES (%s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE has_public_page=VALUES(has_public_page), " \
+              f"slug=VALUES(slug), json=VALUES(json)"
         self.cursor.executemany(sql, location_insert)
         self.mydb.commit()
 
@@ -330,12 +345,17 @@ class DBControl():
             logging.debug(
                 f'Owner data to insert in owner table: {", ".join(list(map(lambda x: str(x), post_columns_owner)))}')
             logging.debug(
-                f'Owner data to insert in owner table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_owner))))}')
+                f'Owner data to insert in owner table type: '
+                f'{", ".join(list(map(lambda x: str(type(x)), list(post_columns_owner))))}')
 
-        sql = f"INSERT INTO owner (id, is_verified, profile_pic_url, username, full_name, is_private, is_unpublished, tiering_recommendation, media_count, followed_by_count) " \
-              f"VALUES (%s ,%s, %s ,%s, %s ,%s, %s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE is_verified=VALUES(is_verified), profile_pic_url=VALUES(profile_pic_url), " \
-              f"username=VALUES(username), full_name=VALUES(full_name), is_private=VALUES(is_private), is_unpublished=VALUES(is_unpublished), " \
-              f"tiering_recommendation=VALUES(tiering_recommendation), media_count=VALUES(media_count), followed_by_count=VALUES(followed_by_count)"
+        sql = f"INSERT INTO owner (id, is_verified, profile_pic_url, username, full_name, is_private, " \
+              f"is_unpublished, tiering_recommendation, media_count, followed_by_count) " \
+              f"VALUES (%s ,%s, %s ,%s, %s ,%s, %s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE " \
+              f"is_verified=VALUES(is_verified), profile_pic_url=VALUES(profile_pic_url), " \
+              f"username=VALUES(username), full_name=VALUES(full_name), is_private=VALUES(is_private), " \
+              f"is_unpublished=VALUES(is_unpublished), " \
+              f"tiering_recommendation=VALUES(tiering_recommendation), media_count=VALUES(media_count), " \
+              f"followed_by_count=VALUES(followed_by_count)"
         self.cursor.executemany(sql, owner_insert)
         self.mydb.commit()
 
@@ -359,12 +379,16 @@ class DBControl():
             content_insert.append(deepcopy(post_columns_content))
 
             logging.debug(
-                f'Post content data to insert in post_content table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
+                f'Post content data to insert in post_content table: '
+                f'{", ".join(list(map(lambda x: str(x), post_columns_content)))}')
             logging.debug(
-                f'Post content data to insert in post_content table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
+                f'Post content data to insert in post_content table type: '
+                f'{", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
 
-        sql = f"INSERT INTO post_content (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, location_name, multiple_photos) " \
-              f"VALUES (%s ,%s, %s ,%s, %s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE comments=VALUES(comments), multiple_photos=VALUES(multiple_photos), " \
+        sql = f"INSERT INTO post_content (shortcode, photo_url, ai_comment, post_text, comments, preview_comment, " \
+              f"location_name, multiple_photos) " \
+              f"VALUES (%s ,%s, %s ,%s, %s ,%s, %s ,%s) ON DUPLICATE KEY UPDATE comments=VALUES(comments), " \
+              f"multiple_photos=VALUES(multiple_photos), " \
               f"preview_comment=VALUES(preview_comment), ai_comment=VALUES(ai_comment)"
         self.cursor.executemany(sql, content_insert)
         self.mydb.commit()
@@ -403,18 +427,23 @@ class DBControl():
             posts_insert.append(deepcopy(post_columns_content))
 
             logging.debug(
-                f'Post info data to insert in post_info table: {", ".join(list(map(lambda x: str(x), post_columns_content)))}')
+                f'Post info data to insert in post_info table: '
+                f'{", ".join(list(map(lambda x: str(x), post_columns_content)))}')
             logging.debug(
-                f'Post info data to insert in post_info table type: {", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
+                f'Post info data to insert in post_info table type: '
+                f'{", ".join(list(map(lambda x: str(type(x)), list(post_columns_content))))}')
 
-        sql = f"INSERT INTO post_info (shortcode, id, hashtags, owner_id, location_id, type, dim_height, dim_width, is_video, comment_count, " \
+        sql = f"INSERT INTO post_info (shortcode, id, hashtags, owner_id, location_id, type, dim_height, " \
+              f"dim_width, is_video, comment_count, " \
               f"preview_comment_count, comment_disabled, timestamp, like_count, is_ad, video_duration, product_type) " \
-              f"VALUES (%s ,%s, %s, %s, %s, %s ,%s, %s ,%s, %s ,%s ,%s ,%s ,%s ,%s ,%s ,%s) ON DUPLICATE KEY UPDATE comment_count=VALUES(comment_count), " \
+              f"VALUES (%s ,%s, %s, %s, %s, %s ,%s, %s ,%s, %s ,%s ,%s ,%s ,%s ,%s ,%s ,%s) ON DUPLICATE KEY UPDATE " \
+              f"comment_count=VALUES(comment_count), " \
               f"preview_comment_count=VALUES(preview_comment_count), comment_disabled=VALUES(comment_disabled)"
         self.cursor.executemany(sql, posts_insert)
         self.mydb.commit()
 
-    def return_post_content_from_json(self, dic, string):
+    @staticmethod
+    def return_post_content_from_json(dic, string):
         """
         Receive json, return the 'string' value from json, None if doesn't exist
         """
@@ -424,7 +453,8 @@ class DBControl():
             value = None
         return value
 
-    def return_str_post_content_from_json(self, dic, string):
+    @staticmethod
+    def return_str_post_content_from_json(dic, string):
         """
         Receive json, return the 'string' value from json in string format, None if doesn't exist
         """
@@ -434,7 +464,8 @@ class DBControl():
             value = None
         return value
 
-    def return_int_post_content_from_json(self, dic, string):
+    @staticmethod
+    def return_int_post_content_from_json(dic, string):
         """
         Receive json, return the 'string' value from json in int format, None if doesn't exist
         """
@@ -444,7 +475,8 @@ class DBControl():
             value = None
         return value
 
-    def return_float_post_content_from_json(self, dic, string):
+    @staticmethod
+    def return_float_post_content_from_json(dic, string):
         """
         Receive json, return the 'string' value from json in float format, None if doesn't exist
         """

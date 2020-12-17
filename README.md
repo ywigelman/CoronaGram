@@ -53,6 +53,7 @@ python coronagram.py corona misterLovaLova 12345678
 | -mx   | --max_scroll_wait | maximum number of seconds to wait after each scroll                                         |                     |                                                                                                                               |
 | -hd   | --headed_mode     | running in headed mode (graphical browser)                                                  | False               |                                                                                                                               |
 | -en   | --enrich          | maximum number of API enrichment tasks                                                      | 0                   | API enrichment includes detection of post language, translation, and analysis of sentiment ( positive, negative or neutral)   |
+| -p    | --proxy           | using a proxy server for scrapping                                                          |                     | 
 
 ### DataBase ERD
 
@@ -61,28 +62,30 @@ python coronagram.py corona misterLovaLova 12345678
 
 ### Notes
 
-This program used selenium library for scrolling on page due to the dynamic properties of instagram hashtag pages. 
-Selenium headless option permits to limit usage of graphical resources.
-Selenium library permits to work with the browser installed on
-the computer (Chrome or Firefox). In case any browser is defined as default browser,
+- This program used selenium library for scrolling on page due to the dynamic properties of instagram hashtag pages. 
+  Selenium headless option permits limiting usage of graphical resources.
+Selenium library permits working with the browser installed on
+the computer (Chrome or Firefox).
+- In case any browser is defined as default browser,
 you have to define a path to it. If it is set, the driver will use the one defined in
 OS environment variable
+- database enrichment and use of proxy server requires keys and server IP respectively. In case these abilities are 
+  required please make the necessary changes in the hidden configuration file 
 
 ### Dependencies
 ```
 beautifulsoup4==4.9.3
 bs4==0.0.1
 certifi==2020.12.5
-numpy==1.19.2
-pandas==1.1.3
+numpy==1.19.4
+pandas==1.1.5
 python-dateutil==2.8.1
 pytz==2020.4
-regex==2.5.86
+regex==0.1
 selenium==3.141.0
 six==1.15.0
 soupsieve==2.0.1
-requests==2.24.0
-openssl===1.1.1h
+requests==2.25.0
 ```
 
 ## Authors

@@ -1,6 +1,10 @@
 import requests
 import json
 from conf import *
+from hidden_conf import *
+
+__version__ = '1.0'
+__author__ = 'Yair Stemmer and Yoav Wigelman'
 
 
 class PostText(object):
