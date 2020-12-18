@@ -22,6 +22,7 @@ from selenium.webdriver.common.proxy import Proxy, ProxyType
 __version__ = '1.0'
 __author__ = 'Yair Stemmer and Yoav Wigelman'
 
+
 class ClassAttributeError(Exception):
     def __init__(self, wrong_input, class_name: str, attribute_name: str, additional: str = None):
         """
