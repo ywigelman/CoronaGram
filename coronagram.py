@@ -9,7 +9,7 @@ import pandas as pd
 import regex as re
 from bs4 import BeautifulSoup
 from conf import *
-from hidden_conf import *
+from hidden_conf_real import *
 from db_control import DBControl
 import logging
 import sys
