@@ -74,18 +74,13 @@ OS environment variable
 
 ### Dependencies
 ```
-beautifulsoup4==4.9.3
-bs4==0.0.1
-certifi==2020.12.5
-numpy==1.19.4
-pandas==1.1.5
-python-dateutil==2.8.1
-pytz==2020.4
-regex==0.1
-selenium==3.141.0
+cffi==1.14.4
+cryptography==3.3.1
+pkg-resources==0.0.0
+pycparser==2.20
+pyOpenSSL==20.0.1
+regex==2020.11.13
 six==1.15.0
-soupsieve==2.0.1
-requests==2.25.0
 ```
 
 ## Authors
